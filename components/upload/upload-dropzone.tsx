@@ -1,8 +1,16 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
-import { AlertCircle, FileSpreadsheet, UploadCloud, X } from "lucide-react";
-import { read, utils } from "xlsx";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Database,
+  FileSpreadsheet,
+  Table2,
+  UploadCloud,
+  X,
+} from "lucide-react";
+import { read } from "xlsx";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,28 +21,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { SheetRow, WorkbookValidationResult } from "@/lib/excel-validation";
+import { excelSerialDateToDate, validateWorkbook } from "@/lib/excel-validation";
 import { cn } from "@/lib/utils";
-
-type SheetRow = unknown[];
-
-type WorkbookPreview = {
-  sheet1Rows: SheetRow[];
-  sheet2Rows: SheetRow[];
-};
-
-const REQUIRED_SHEETS = ["Sheet1", "Sheet2"] as const;
 
 function isXlsxFile(file: File) {
   return file.name.toLowerCase().endsWith(".xlsx");
 }
 
-function formatCellValue(value: unknown) {
+function isDayColumn(header: unknown) {
+  return String(header ?? "").trim().toLocaleUpperCase("en-US") === "DAY";
+}
+
+function formatCellValue(value: unknown, options?: { dateColumn?: boolean }) {
   if (value === null || value === undefined || value === "") {
     return "-";
   }
 
+  if (options?.dateColumn) {
+    const date = excelSerialDateToDate(value);
+
+    if (date.value) {
+      return formatDate(date.value);
+    }
+  }
+
   if (value instanceof Date) {
-    return value.toLocaleDateString();
+    return formatDate(value);
   }
 
   return String(value);
@@ -42,6 +55,15 @@ function formatCellValue(value: unknown) {
 
 function getColumnCount(rows: SheetRow[]) {
   return Math.max(1, ...rows.slice(0, 5).map((row) => row.length));
+}
+
+function formatDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(value);
 }
 
 function PreviewTable({
@@ -52,6 +74,7 @@ function PreviewTable({
   sheetName: string;
 }) {
   const previewRows = rows.slice(0, 5);
+  const headerRow = rows[0] ?? [];
   const columnCount = getColumnCount(previewRows);
 
   return (
@@ -72,7 +95,9 @@ function PreviewTable({
                       key={columnIndex}
                     >
                       <span className="line-clamp-2 break-words">
-                        {formatCellValue(row[columnIndex])}
+                        {formatCellValue(row[columnIndex], {
+                          dateColumn: rowIndex > 0 && isDayColumn(headerRow[columnIndex]),
+                        })}
                       </span>
                     </td>
                   ))}
@@ -90,15 +115,138 @@ function PreviewTable({
   );
 }
 
+function ValidationSummary({ result }: { result: WorkbookValidationResult }) {
+  const summaryItems = [
+    {
+      label: "Total rows",
+      value: result.summary.totalRows,
+    },
+    {
+      label: "Valid rows",
+      value: result.summary.validRows,
+    },
+    {
+      label: "Invalid rows",
+      value: result.summary.invalidRows,
+    },
+    {
+      label: "Skipped empty rows",
+      value: result.summary.skippedEmptyRows,
+    },
+  ];
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {summaryItems.map((item) => (
+        <div
+          className="rounded-md border border-white/10 bg-black/20 p-4"
+          key={item.label}
+        >
+          <p className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+            {item.label}
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CleanDatasetSummary({ result }: { result: WorkbookValidationResult }) {
+  const readyItems = [
+    {
+      label: "Daily Patients Ready",
+      value: result.dailyPatients.length,
+      icon: Database,
+    },
+    {
+      label: "QA Errors Ready",
+      value: result.qaErrors.length,
+      icon: Table2,
+    },
+  ];
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {readyItems.map((item) => {
+        const Icon = item.icon;
+
+        return (
+          <div
+            className="flex items-center justify-between gap-4 rounded-md border border-emerald-300/20 bg-emerald-300/[0.06] p-3"
+            key={item.label}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-emerald-300" />
+              <span className="truncate text-sm font-medium text-emerald-50">
+                {item.label}
+              </span>
+            </div>
+            <span className="font-mono text-lg font-semibold text-white">
+              {item.value}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function InvalidRowsTable({ result }: { result: WorkbookValidationResult }) {
+  if (result.invalidRows.length === 0) {
+    return (
+      <Alert className="border-emerald-300/25 bg-emerald-300/10 text-emerald-100">
+        <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-300" />
+        <AlertDescription>No invalid rows detected.</AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+      <div className="flex items-center gap-3">
+        <AlertCircle aria-hidden="true" className="h-4 w-4 text-red-300" />
+        <h3 className="text-sm font-medium text-white">Invalid Rows</h3>
+      </div>
+      <div className="overflow-x-auto rounded-md border border-white/10">
+        <table className="min-w-full border-collapse text-left text-sm">
+          <thead className="bg-white/[0.03] text-xs uppercase tracking-normal text-zinc-500">
+            <tr>
+              <th className="px-3 py-2 font-medium">Sheet</th>
+              <th className="px-3 py-2 font-medium">Row</th>
+              <th className="px-3 py-2 font-medium">Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.invalidRows.map((row, index) => (
+              <tr
+                className="border-t border-white/10 text-zinc-300"
+                key={`${row.sheetName}-${row.rowNumber}-${index}`}
+              >
+                <td className="whitespace-nowrap px-3 py-2">{row.sheetName}</td>
+                <td className="whitespace-nowrap px-3 py-2 font-mono">
+                  {row.rowNumber === 0 ? "-" : row.rowNumber}
+                </td>
+                <td className="min-w-80 px-3 py-2 text-zinc-400">{row.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function UploadDropzone() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<WorkbookPreview | null>(null);
+  const [validationResult, setValidationResult] =
+    useState<WorkbookValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function selectFile(file: File | undefined) {
-    setPreview(null);
+    setValidationResult(null);
     setError(null);
 
     if (!file) {
@@ -131,7 +279,7 @@ export function UploadDropzone() {
 
   function clearSelectedFile() {
     setSelectedFile(null);
-    setPreview(null);
+    setValidationResult(null);
     setError(null);
 
     if (inputRef.current) {
@@ -145,30 +293,12 @@ export function UploadDropzone() {
     }
 
     setIsParsing(true);
-    setPreview(null);
+    setValidationResult(null);
     setError(null);
 
     try {
       const workbook = read(await selectedFile.arrayBuffer(), { type: "array" });
-      const missingSheet = REQUIRED_SHEETS.find((sheetName) => !workbook.Sheets[sheetName]);
-
-      if (missingSheet) {
-        setError(`Could not find ${missingSheet} in this workbook.`);
-        return;
-      }
-
-      setPreview({
-        sheet1Rows: utils.sheet_to_json<SheetRow>(workbook.Sheets.Sheet1, {
-          blankrows: true,
-          defval: "",
-          header: 1,
-        }),
-        sheet2Rows: utils.sheet_to_json<SheetRow>(workbook.Sheets.Sheet2, {
-          blankrows: true,
-          defval: "",
-          header: 1,
-        }),
-      });
+      setValidationResult(validateWorkbook(workbook));
     } catch {
       setError("The workbook could not be parsed. Check the file and try again.");
     } finally {
@@ -198,8 +328,8 @@ export function UploadDropzone() {
             Drag and drop an Excel file here
           </span>
           <span className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
-            Choose the workbook you want to parse. The preview stays in this
-            browser session only.
+            Choose the workbook you want to validate. Clean datasets stay in
+            this browser session only.
           </span>
           <span
             className={cn(
@@ -240,10 +370,10 @@ export function UploadDropzone() {
               type="button"
             >
               <UploadCloud aria-hidden="true" className="h-4 w-4" />
-              {isParsing ? "Parsing" : "Parse Preview"}
+              {isParsing ? "Validating" : "Validate Workbook"}
             </Button>
             <Button
-              disabled={!selectedFile && !preview && !error}
+              disabled={!selectedFile && !validationResult && !error}
               onClick={clearSelectedFile}
               type="button"
               variant="outline"
@@ -261,10 +391,15 @@ export function UploadDropzone() {
           </Alert>
         ) : null}
 
-        {preview ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <PreviewTable rows={preview.sheet1Rows} sheetName="Sheet1" />
-            <PreviewTable rows={preview.sheet2Rows} sheetName="Sheet2" />
+        {validationResult ? (
+          <div className="space-y-5">
+            <ValidationSummary result={validationResult} />
+            <CleanDatasetSummary result={validationResult} />
+            <InvalidRowsTable result={validationResult} />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <PreviewTable rows={validationResult.sheet1Rows} sheetName="Sheet1" />
+              <PreviewTable rows={validationResult.sheet2Rows} sheetName="Sheet2" />
+            </div>
           </div>
         ) : null}
       </CardContent>
