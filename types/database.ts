@@ -76,24 +76,39 @@ export type Database = {
         Row: {
           id: number;
           file_name: string;
+          source_file: string;
+          inserted_daily_patients: number;
+          inserted_qa_errors: number;
           rows_patients_inserted: number | null;
           rows_errors_inserted: number | null;
+          skipped_rows: number;
+          failed_rows: number;
           uploaded_at: string | null;
           status: string | null;
         };
         Insert: {
           id?: never;
           file_name: string;
+          source_file: string;
+          inserted_daily_patients?: number;
+          inserted_qa_errors?: number;
           rows_patients_inserted?: number | null;
           rows_errors_inserted?: number | null;
+          skipped_rows?: number;
+          failed_rows?: number;
           uploaded_at?: string | null;
           status?: string | null;
         };
         Update: {
           id?: never;
           file_name?: string;
+          source_file?: string;
+          inserted_daily_patients?: number;
+          inserted_qa_errors?: number;
           rows_patients_inserted?: number | null;
           rows_errors_inserted?: number | null;
+          skipped_rows?: number;
+          failed_rows?: number;
           uploaded_at?: string | null;
           status?: string | null;
         };

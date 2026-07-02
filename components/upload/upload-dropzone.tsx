@@ -25,6 +25,22 @@ import type { SheetRow, WorkbookValidationResult } from "@/lib/excel-validation"
 import { excelSerialDateToDate, validateWorkbook } from "@/lib/excel-validation";
 import { cn } from "@/lib/utils";
 
+type ImportUploadResult = {
+  sourceFile: string;
+  status: "success" | "partial" | "failed";
+  totalProcessed: number;
+  successfullyInserted: number;
+  failed: number;
+  skipped: number;
+  insertedDailyPatients: number;
+  insertedQaErrors: number;
+  failedDailyPatients: number;
+  failedQaErrors: number;
+  failedValidationRows: number;
+  uploadBatchId: number | null;
+  errors: string[];
+};
+
 function isXlsxFile(file: File) {
   return file.name.toLowerCase().endsWith(".xlsx");
 }
@@ -237,17 +253,76 @@ function InvalidRowsTable({ result }: { result: WorkbookValidationResult }) {
   );
 }
 
+function UploadResultSummary({ result }: { result: ImportUploadResult }) {
+  const summaryItems = [
+    {
+      label: "Total processed",
+      value: result.totalProcessed,
+    },
+    {
+      label: "Successfully inserted",
+      value: result.successfullyInserted,
+    },
+    {
+      label: "Failed",
+      value: result.failed,
+    },
+    {
+      label: "Skipped",
+      value: result.skipped,
+    },
+  ];
+
+  return (
+    <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-sm font-medium text-white">Upload Result</h3>
+        <span className="font-mono text-xs uppercase tracking-normal text-emerald-300">
+          {result.status}
+        </span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {summaryItems.map((item) => (
+          <div
+            className="rounded-md border border-white/10 bg-white/[0.03] p-3"
+            key={item.label}
+          >
+            <p className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+              {item.label}
+            </p>
+            <p className="mt-2 text-xl font-semibold text-white">{item.value}</p>
+          </div>
+        ))}
+      </div>
+      {result.errors.length > 0 ? (
+        <div className="space-y-2 rounded-md border border-red-300/20 bg-red-300/[0.06] p-3">
+          {result.errors.map((message, index) => (
+            <p className="text-sm text-red-100" key={`${message}-${index}`}>
+              {message}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function UploadDropzone() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [validationResult, setValidationResult] =
     useState<WorkbookValidationResult | null>(null);
+  const [uploadResult, setUploadResult] = useState<ImportUploadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function selectFile(file: File | undefined) {
     setValidationResult(null);
+    setUploadResult(null);
     setError(null);
+    setImportError(null);
 
     if (!file) {
       setSelectedFile(null);
@@ -280,7 +355,9 @@ export function UploadDropzone() {
   function clearSelectedFile() {
     setSelectedFile(null);
     setValidationResult(null);
+    setUploadResult(null);
     setError(null);
+    setImportError(null);
 
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -294,7 +371,9 @@ export function UploadDropzone() {
 
     setIsParsing(true);
     setValidationResult(null);
+    setUploadResult(null);
     setError(null);
+    setImportError(null);
 
     try {
       const workbook = read(await selectedFile.arrayBuffer(), { type: "array" });
@@ -303,6 +382,40 @@ export function UploadDropzone() {
       setError("The workbook could not be parsed. Check the file and try again.");
     } finally {
       setIsParsing(false);
+    }
+  }
+
+  async function importSelectedFile() {
+    if (!selectedFile || !validationResult) {
+      return;
+    }
+
+    setIsImporting(true);
+    setUploadResult(null);
+    setImportError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const response = await fetch("/api/upload/import", {
+        body: formData,
+        method: "POST",
+      });
+      const payload = (await response.json()) as {
+        result?: ImportUploadResult;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.result) {
+        setImportError(payload.error ?? "The workbook could not be imported.");
+        return;
+      }
+
+      setUploadResult(payload.result);
+    } catch {
+      setImportError("The workbook could not be imported.");
+    } finally {
+      setIsImporting(false);
     }
   }
 
@@ -365,7 +478,7 @@ export function UploadDropzone() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
-              disabled={!selectedFile || isParsing}
+              disabled={!selectedFile || isParsing || isImporting}
               onClick={parseSelectedFile}
               type="button"
             >
@@ -373,7 +486,16 @@ export function UploadDropzone() {
               {isParsing ? "Validating" : "Validate Workbook"}
             </Button>
             <Button
-              disabled={!selectedFile && !validationResult && !error}
+              disabled={!selectedFile || !validationResult || isParsing || isImporting}
+              onClick={importSelectedFile}
+              type="button"
+              variant="outline"
+            >
+              <Database aria-hidden="true" className="h-4 w-4" />
+              {isImporting ? "Importing" : "Import to Supabase"}
+            </Button>
+            <Button
+              disabled={!selectedFile && !validationResult && !error && !uploadResult}
               onClick={clearSelectedFile}
               type="button"
               variant="outline"
@@ -391,10 +513,18 @@ export function UploadDropzone() {
           </Alert>
         ) : null}
 
+        {importError ? (
+          <Alert variant="destructive">
+            <AlertCircle aria-hidden="true" className="h-4 w-4" />
+            <AlertDescription>{importError}</AlertDescription>
+          </Alert>
+        ) : null}
+
         {validationResult ? (
           <div className="space-y-5">
             <ValidationSummary result={validationResult} />
             <CleanDatasetSummary result={validationResult} />
+            {uploadResult ? <UploadResultSummary result={uploadResult} /> : null}
             <InvalidRowsTable result={validationResult} />
             <div className="grid gap-4 lg:grid-cols-2">
               <PreviewTable rows={validationResult.sheet1Rows} sheetName="Sheet1" />
