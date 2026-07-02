@@ -1,0 +1,108 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type Database = {
+  public: {
+    Tables: {
+      daily_patients: {
+        Row: {
+          id: number;
+          day: string;
+          patient_count: number;
+          source_file: string | null;
+          uploaded_at: string | null;
+        };
+        Insert: {
+          id?: never;
+          day: string;
+          patient_count: number;
+          source_file?: string | null;
+          uploaded_at?: string | null;
+        };
+        Update: {
+          id?: never;
+          day?: string;
+          patient_count?: number;
+          source_file?: string | null;
+          uploaded_at?: string | null;
+        };
+        Relationships: [];
+      };
+      qa_errors: {
+        Row: {
+          id: number;
+          pharmacist_name: string;
+          pharmacist_name_raw: string | null;
+          day: string;
+          patient_id: string;
+          issue_type: string;
+          score: number;
+          issue_details: string | null;
+          source_file: string | null;
+          uploaded_at: string | null;
+        };
+        Insert: {
+          id?: never;
+          pharmacist_name: string;
+          pharmacist_name_raw?: string | null;
+          day: string;
+          patient_id: string;
+          issue_type: string;
+          score: number;
+          issue_details?: string | null;
+          source_file?: string | null;
+          uploaded_at?: string | null;
+        };
+        Update: {
+          id?: never;
+          pharmacist_name?: string;
+          pharmacist_name_raw?: string | null;
+          day?: string;
+          patient_id?: string;
+          issue_type?: string;
+          score?: number;
+          issue_details?: string | null;
+          source_file?: string | null;
+          uploaded_at?: string | null;
+        };
+        Relationships: [];
+      };
+      upload_batches: {
+        Row: {
+          id: number;
+          file_name: string;
+          rows_patients_inserted: number | null;
+          rows_errors_inserted: number | null;
+          uploaded_at: string | null;
+          status: string | null;
+        };
+        Insert: {
+          id?: never;
+          file_name: string;
+          rows_patients_inserted?: number | null;
+          rows_errors_inserted?: number | null;
+          uploaded_at?: string | null;
+          status?: string | null;
+        };
+        Update: {
+          id?: never;
+          file_name?: string;
+          rows_patients_inserted?: number | null;
+          rows_errors_inserted?: number | null;
+          uploaded_at?: string | null;
+          status?: string | null;
+        };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
