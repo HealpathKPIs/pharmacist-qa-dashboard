@@ -7,9 +7,9 @@ import {
   AUTH_COOKIE_NAME,
   SESSION_MAX_AGE_SECONDS,
   createSessionToken,
-  verifyPassword,
 } from "@/lib/auth";
 import { DASHBOARD_PATH, LOGIN_PATH } from "@/lib/constants";
+import { verifyPassword } from "@/lib/password-auth";
 
 const INVALID_LOGIN_REDIRECT = `${LOGIN_PATH}?error=invalid`;
 

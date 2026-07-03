@@ -2,20 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Upload } from "lucide-react";
+import { History, LayoutDashboard, Settings, Upload } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const navigationItems = [
   {
     href: "/",
-    label: "Home",
+    label: "Dashboard",
     icon: LayoutDashboard,
   },
   {
     href: "/upload",
     label: "Upload",
     icon: Upload,
+  },
+  {
+    href: "/uploads",
+    label: "History",
+    icon: History,
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
   },
 ];
 
@@ -29,11 +39,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link className="text-sm font-semibold text-white" href="/">
             Pharmacist QA Dashboard
           </Link>
-          <nav aria-label="Main navigation" className="flex gap-2">
+          <nav aria-label="Main navigation" className="flex flex-wrap gap-2">
             {navigationItems.map((item) => {
               const Icon = item.icon;
               const isActive =
-                item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
               return (
                 <Link

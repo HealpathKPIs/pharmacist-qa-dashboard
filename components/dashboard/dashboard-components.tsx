@@ -4,7 +4,9 @@ import {
   BarChart3,
   CircleGauge,
   ClipboardList,
+  History,
   LayoutDashboard,
+  Settings,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -42,6 +44,29 @@ type KpiCardConfig = {
   icon: typeof Users;
 };
 
+const dashboardNavigationItems = [
+  {
+    href: "/",
+    label: "Dashboard",
+    icon: BarChart3,
+  },
+  {
+    href: "/upload",
+    label: "Upload Data",
+    icon: ClipboardList,
+  },
+  {
+    href: "/uploads",
+    label: "Upload History",
+    icon: History,
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
+  },
+];
+
 function formatInteger(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
@@ -73,20 +98,27 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           Pharmacist QA
         </Link>
         <nav className="mt-8 space-y-1" aria-label="Dashboard navigation">
-          <Link
-            className="flex h-10 items-center gap-3 rounded-md bg-white/10 px-3 text-sm font-medium text-white"
-            href="/"
-          >
-            <BarChart3 aria-hidden="true" className="h-4 w-4 text-emerald-300" />
-            Dashboard
-          </Link>
-          <Link
-            className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
-            href="/upload"
-          >
-            <ClipboardList aria-hidden="true" className="h-4 w-4" />
-            Upload Data
-          </Link>
+          {dashboardNavigationItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = item.href === "/";
+
+            return (
+              <Link
+                className={cn(
+                  "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/10 hover:text-white",
+                  isActive && "bg-white/10 text-white",
+                )}
+                href={item.href}
+                key={item.href}
+              >
+                <Icon
+                  aria-hidden="true"
+                  className={cn("h-4 w-4", isActive && "text-emerald-300")}
+                />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
       </aside>
       <div className="border-b border-white/10 bg-[#0b0d0f] px-4 py-3 lg:hidden">
@@ -94,21 +126,31 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <Link className="text-sm font-semibold text-white" href="/">
             Pharmacist QA
           </Link>
-          <nav aria-label="Mobile navigation" className="flex items-center gap-2">
-            <Link
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-white/10 px-3 text-sm font-medium text-white"
-              href="/"
-            >
-              <BarChart3 aria-hidden="true" className="h-4 w-4 text-emerald-300" />
-              Dashboard
-            </Link>
-            <Link
-              className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
-              href="/upload"
-            >
-              <ClipboardList aria-hidden="true" className="h-4 w-4" />
-              Upload
-            </Link>
+          <nav
+            aria-label="Mobile navigation"
+            className="flex items-center gap-2 overflow-x-auto"
+          >
+            {dashboardNavigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.href === "/";
+
+              return (
+                <Link
+                  className={cn(
+                    "inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/10 hover:text-white",
+                    isActive && "bg-white/10 text-white",
+                  )}
+                  href={item.href}
+                  key={item.href}
+                >
+                  <Icon
+                    aria-hidden="true"
+                    className={cn("h-4 w-4", isActive && "text-emerald-300")}
+                  />
+                  {item.href === "/uploads" ? "History" : item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
       </div>
@@ -176,7 +218,10 @@ export function KpiCards({ totals }: { totals: DashboardTotals }) {
         const Icon = card.icon;
 
         return (
-          <Card className="border-white/10 bg-white/[0.04] shadow-none" key={card.label}>
+          <Card
+            className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none transition-transform duration-200 hover:-translate-y-0.5"
+            key={card.label}
+          >
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -222,7 +267,7 @@ export function DailyTrendChart({ data }: { data: DailyTrendPoint[] }) {
     .join(" ");
 
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-none xl:col-span-2">
+    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none xl:col-span-2">
       <CardHeader>
         <CardTitle className="text-base text-white">Daily Trend</CardTitle>
         <CardDescription>Error rate over time</CardDescription>
@@ -288,7 +333,7 @@ export function HorizontalBarChart({
   const maxValue = getChartMax(data.map((item) => item.value));
 
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
       <CardHeader>
         <CardTitle className="text-base text-white">{title}</CardTitle>
         <CardDescription>{labelKey}</CardDescription>
@@ -306,7 +351,7 @@ export function HorizontalBarChart({
                 </div>
                 <div className="h-2 rounded-full bg-white/10">
                   <div
-                    className="h-2 rounded-full bg-emerald-300"
+                    className="h-2 rounded-full bg-emerald-300 transition-[width] duration-500"
                     style={{ width: `${Math.max(4, (item.value / maxValue) * 100)}%` }}
                   />
                 </div>
@@ -327,7 +372,7 @@ export function TopPharmacistsTable({
   totalErrors: number;
 }) {
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
       <CardHeader>
         <CardTitle className="text-base text-white">Top Pharmacists</CardTitle>
         <CardDescription>Share of filtered QA errors</CardDescription>
@@ -370,7 +415,7 @@ export function TopPharmacistsTable({
 
 export function TopIssuesTable({ rows }: { rows: ErrorsByIssue[] }) {
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
       <CardHeader>
         <CardTitle className="text-base text-white">Top Issues</CardTitle>
         <CardDescription>Most frequent issue labels</CardDescription>

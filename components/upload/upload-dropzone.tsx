@@ -21,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
 import type { SheetRow, WorkbookValidationResult } from "@/lib/excel-validation";
 import { excelSerialDateToDate, validateWorkbook } from "@/lib/excel-validation";
 import { cn } from "@/lib/utils";
@@ -308,6 +309,7 @@ function UploadResultSummary({ result }: { result: ImportUploadResult }) {
 }
 
 export function UploadDropzone() {
+  const toast = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [validationResult, setValidationResult] =
     useState<WorkbookValidationResult | null>(null);
@@ -330,8 +332,15 @@ export function UploadDropzone() {
     }
 
     if (!isXlsxFile(file)) {
+      const message = "Select an Excel workbook with the .xlsx file extension.";
+
       setSelectedFile(null);
-      setError("Select a .xlsx workbook before parsing.");
+      setError(message);
+      toast({
+        description: message,
+        title: "Unsupported file",
+        variant: "destructive",
+      });
 
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -377,9 +386,24 @@ export function UploadDropzone() {
 
     try {
       const workbook = read(await selectedFile.arrayBuffer(), { type: "array" });
-      setValidationResult(validateWorkbook(workbook));
+      const result = validateWorkbook(workbook);
+
+      setValidationResult(result);
+      toast({
+        description: `${result.summary.validRows} valid rows, ${result.summary.invalidRows} invalid rows, ${result.summary.skippedEmptyRows} skipped rows.`,
+        title: "Workbook validated",
+        variant: result.summary.invalidRows > 0 ? "default" : "success",
+      });
     } catch {
-      setError("The workbook could not be parsed. Check the file and try again.");
+      const message =
+        "The workbook could not be parsed. Confirm it is a valid .xlsx file and try again.";
+
+      setError(message);
+      toast({
+        description: message,
+        title: "Validation failed",
+        variant: "destructive",
+      });
     } finally {
       setIsParsing(false);
     }
@@ -407,20 +431,45 @@ export function UploadDropzone() {
       };
 
       if (!response.ok || !payload.result) {
-        setImportError(payload.error ?? "The workbook could not be imported.");
+        const message =
+          payload.error ??
+          "The workbook could not be imported. Review the upload result and try again.";
+
+        setImportError(message);
+        toast({
+          description: message,
+          title: "Import failed",
+          variant: "destructive",
+        });
         return;
       }
 
       setUploadResult(payload.result);
+      toast({
+        description: `${payload.result.successfullyInserted} inserted, ${payload.result.failed} failed, ${payload.result.skipped} skipped.`,
+        title:
+          payload.result.status === "success"
+            ? "Import complete"
+            : "Import completed with issues",
+        variant: payload.result.status === "success" ? "success" : "default",
+      });
     } catch {
-      setImportError("The workbook could not be imported.");
+      const message =
+        "The workbook could not be imported. Check the database connection and try again.";
+
+      setImportError(message);
+      toast({
+        description: message,
+        title: "Import failed",
+        variant: "destructive",
+      });
     } finally {
       setIsImporting(false);
     }
   }
 
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
       <CardHeader>
         <CardTitle className="text-white">Excel Import</CardTitle>
         <CardDescription>
