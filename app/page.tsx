@@ -1,23 +1,23 @@
 import {
-  DailyTrendChart,
   DashboardEmptyState,
   DashboardErrorState,
   DashboardHeader,
   DashboardShell,
-  HorizontalBarChart,
-  KpiCards,
-  TopIssuesTable,
-  TopPharmacistsTable,
 } from "@/components/dashboard/dashboard-components";
 import {
   DashboardFilters,
   type DashboardFilterValues,
 } from "@/components/dashboard/dashboard-filters";
+import { DashboardInteractive } from "@/components/dashboard/dashboard-interactive";
 import {
   getDailyTrend,
+  getDailyPatientDetails,
   getDashboardTotals,
   getErrorsByIssue,
   getErrorsByPharmacist,
+  getPreviousPeriodFilters,
+  getQaErrorDetails,
+  getSeverityDistribution,
   type DashboardDateRangeFilter,
 } from "@/lib/dashboard-queries";
 
@@ -67,18 +67,27 @@ export default async function Home({
   const dateOnlyFilters = toDateOnlyFilters(filters);
 
   try {
+    const previousPeriodFilters = await getPreviousPeriodFilters(queryFilters);
     const [
       totals,
+      previousTotals,
       dailyTrend,
       errorsByPharmacist,
       errorsByIssue,
+      dailyPatientDetails,
+      qaErrorDetails,
+      severityDistribution,
       pharmacistOptions,
       issueOptions,
     ] = await Promise.all([
       getDashboardTotals(queryFilters),
+      getDashboardTotals(previousPeriodFilters),
       getDailyTrend(queryFilters),
       getErrorsByPharmacist(queryFilters),
       getErrorsByIssue(queryFilters),
+      getDailyPatientDetails(dateOnlyFilters),
+      getQaErrorDetails(queryFilters),
+      getSeverityDistribution(queryFilters),
       getErrorsByPharmacist(dateOnlyFilters),
       getErrorsByIssue(dateOnlyFilters),
     ]);
@@ -104,39 +113,16 @@ export default async function Home({
           {!hasData ? (
             <DashboardEmptyState />
           ) : (
-            <>
-              <KpiCards totals={totals} />
-              <section className="grid gap-4 xl:grid-cols-3">
-                <DailyTrendChart data={dailyTrend} />
-                <HorizontalBarChart
-                  data={errorsByPharmacist.map((row) => ({
-                    label: row.pharmacistName,
-                    value: row.errorCount,
-                  }))}
-                  emptyLabel="No pharmacist chart data for the selected filters."
-                  labelKey="Errors by pharmacist"
-                  title="Errors by Pharmacist"
-                />
-              </section>
-              <section className="grid gap-4 lg:grid-cols-2">
-                <HorizontalBarChart
-                  data={errorsByIssue.map((row) => ({
-                    label: row.issueType,
-                    value: row.errorCount,
-                  }))}
-                  emptyLabel="No issue chart data for the selected filters."
-                  labelKey="Errors by issue"
-                  title="Errors by Issue"
-                />
-                <TopPharmacistsTable
-                  rows={errorsByPharmacist}
-                  totalErrors={totals.totalQaErrors}
-                />
-              </section>
-              <section className="grid gap-4 lg:grid-cols-2">
-                <TopIssuesTable rows={errorsByIssue} />
-              </section>
-            </>
+            <DashboardInteractive
+              dailyPatientDetails={dailyPatientDetails}
+              dailyTrend={dailyTrend}
+              errorsByIssue={errorsByIssue}
+              errorsByPharmacist={errorsByPharmacist}
+              previousTotals={previousTotals}
+              qaErrorDetails={qaErrorDetails}
+              severityDistribution={severityDistribution}
+              totals={totals}
+            />
           )}
         </main>
       </DashboardShell>
