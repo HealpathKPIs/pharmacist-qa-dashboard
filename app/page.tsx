@@ -9,6 +9,7 @@ import {
   type DashboardFilterValues,
 } from "@/components/dashboard/dashboard-filters";
 import { DashboardInteractive } from "@/components/dashboard/dashboard-interactive";
+import { checkDatabaseHealth } from "@/lib/database-health";
 import {
   getDailyTrend,
   getDailyPatientDetails,
@@ -20,6 +21,7 @@ import {
   getSeverityDistribution,
   type DashboardDateRangeFilter,
 } from "@/lib/dashboard-queries";
+import { getUploadHistory } from "@/lib/upload-history";
 
 export const dynamic = "force-dynamic";
 
@@ -76,9 +78,12 @@ export default async function Home({
       errorsByIssue,
       dailyPatientDetails,
       qaErrorDetails,
+      previousQaErrorDetails,
       severityDistribution,
       pharmacistOptions,
       issueOptions,
+      recentUploads,
+      databaseHealth,
     ] = await Promise.all([
       getDashboardTotals(queryFilters),
       getDashboardTotals(previousPeriodFilters),
@@ -87,9 +92,12 @@ export default async function Home({
       getErrorsByIssue(queryFilters),
       getDailyPatientDetails(dateOnlyFilters),
       getQaErrorDetails(queryFilters),
+      getQaErrorDetails(previousPeriodFilters),
       getSeverityDistribution(queryFilters),
       getErrorsByPharmacist(dateOnlyFilters),
       getErrorsByIssue(dateOnlyFilters),
+      getUploadHistory(1),
+      checkDatabaseHealth(),
     ]);
     const hasData =
       totals.totalPatients > 0 ||
@@ -116,10 +124,13 @@ export default async function Home({
             <DashboardInteractive
               dailyPatientDetails={dailyPatientDetails}
               dailyTrend={dailyTrend}
+              databaseHealthy={databaseHealth.ok}
               errorsByIssue={errorsByIssue}
               errorsByPharmacist={errorsByPharmacist}
+              previousQaErrorDetails={previousQaErrorDetails}
               previousTotals={previousTotals}
               qaErrorDetails={qaErrorDetails}
+              recentUpload={recentUploads[0] ?? null}
               severityDistribution={severityDistribution}
               totals={totals}
             />
