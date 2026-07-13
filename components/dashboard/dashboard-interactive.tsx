@@ -167,6 +167,16 @@ function formatSignedRate(value: number) {
   return `${sign}${value.toFixed(2)}`;
 }
 
+function formatPoints(value: number) {
+  return `${value.toFixed(2)} pts`;
+}
+
+function formatSignedPointsValue(value: number) {
+  const sign = value > 0 ? "+" : "";
+
+  return `${sign}${value.toFixed(2)} pts`;
+}
+
 function formatDay(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
@@ -212,6 +222,14 @@ function getSeverityScoreRate(totalSeverityScore: number, totalPatients: number)
   }
 
   return totalSeverityScore / totalPatients;
+}
+
+function getQaDeduction(totalSeverityScore: number, totalQaErrors: number) {
+  if (totalQaErrors === 0) {
+    return 0;
+  }
+
+  return totalSeverityScore / totalQaErrors;
 }
 
 function getPatientCountsByDay(rows: DailyPatientDetail[]) {
@@ -892,6 +910,11 @@ export function DashboardInteractive({
     previousTotalSeverityScore,
     previousTotals.totalPatients,
   );
+  const qaDeduction = getQaDeduction(totalSeverityScore, totals.totalQaErrors);
+  const previousQaDeduction = getQaDeduction(
+    previousTotalSeverityScore,
+    previousTotals.totalQaErrors,
+  );
   const pharmacistQualitySummaries = useMemo(
     () =>
       buildPharmacistQualitySummaries({
@@ -990,7 +1013,7 @@ export function DashboardInteractive({
           subtitle="Quality scoring uses severity score per patient, with pharmacist ranking based on severity score rate."
           title="Executive Summary"
         />
-        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           <ExecutiveMetricCard
             detail="Patients in the selected date range"
             icon={Users}
@@ -1030,6 +1053,15 @@ export function DashboardInteractive({
             trendValueFormatter={formatRate}
             value={severityScoreRate}
           />
+          <ExecutiveMetricCard
+            detail="Average severity points per QA error"
+            icon={ClipboardList}
+            label="QA Deduction (pts)"
+            previous={previousQaDeduction}
+            trendDifferenceFormatter={formatSignedPointsValue}
+            trendValueFormatter={formatPoints}
+            value={qaDeduction}
+          />
         </div>
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
           {executiveInsights.map((insight) => (
@@ -1047,7 +1079,7 @@ export function DashboardInteractive({
           subtitle="Click any card to inspect the records behind the metric."
           title="Operational KPIs"
         />
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <KpiCard
           detail="Daily patient count"
           icon={Users}
@@ -1127,6 +1159,23 @@ export function DashboardInteractive({
               {totals.mostCommonIssue ?? "No issue"}
             </span>
           }
+        />
+        <KpiCard
+          detail="Average severity points per QA error"
+          icon={ClipboardList}
+          label="QA Deduction (pts)"
+          onClick={() =>
+            openErrorsDialog(
+              "QA Deduction Records",
+              "Filtered QA error records used in the current QA deduction calculation.",
+              qaErrorDetails,
+            )
+          }
+          trendCurrent={qaDeduction}
+          trendDifferenceFormatter={formatSignedPointsValue}
+          trendPrevious={previousQaDeduction}
+          trendValueFormatter={formatPoints}
+          value={<AnimatedMetric formatter={formatPoints} value={qaDeduction} />}
         />
         </div>
       </section>
