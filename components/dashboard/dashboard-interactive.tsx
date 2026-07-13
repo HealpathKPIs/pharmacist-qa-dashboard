@@ -117,12 +117,24 @@ type SelectedBar = {
 } | null;
 
 type Insight = {
-  currentRate: number;
-  difference: number;
   label: string;
   name: string;
-  previousRate: number;
+  severityScoreRate: number;
   tone: "good" | "bad" | "neutral";
+  totalPatients: number;
+  totalQaErrors: number;
+  totalSeverityScore: number;
+  trendDelta?: number;
+};
+
+type PharmacistQualitySummary = {
+  decline: number;
+  improvement: number;
+  name: string;
+  severityScoreRate: number;
+  totalPatients: number;
+  totalQaErrors: number;
+  totalSeverityScore: number;
 };
 
 function formatInteger(value: number) {
@@ -143,6 +155,16 @@ function formatSignedPoints(value: number) {
   const sign = value > 0 ? "+" : "";
 
   return `${sign}${value.toFixed(2)} pp`;
+}
+
+function formatRate(value: number) {
+  return value.toFixed(2);
+}
+
+function formatSignedRate(value: number) {
+  const sign = value > 0 ? "+" : "";
+
+  return `${sign}${value.toFixed(2)}`;
 }
 
 function formatDay(value: string) {
@@ -180,119 +202,162 @@ function truncateLabel(value: string, maxLength = 24) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
-function getAverageSeverity(rows: QaErrorDetail[]) {
-  if (rows.length === 0) {
-    return 0;
-  }
-
-  return rows.reduce((sum, row) => sum + row.score, 0) / rows.length;
+function getTotalSeverityScore(rows: QaErrorDetail[]) {
+  return rows.reduce((sum, row) => sum + row.score, 0);
 }
 
-function getErrorRate(errorCount: number, totalPatients: number) {
+function getSeverityScoreRate(totalSeverityScore: number, totalPatients: number) {
   if (totalPatients === 0) {
     return 0;
   }
 
-  return (errorCount / totalPatients) * 100;
+  return totalSeverityScore / totalPatients;
 }
 
-function countErrorsByPharmacist(rows: QaErrorDetail[]) {
+function getPatientCountsByDay(rows: DailyPatientDetail[]) {
   return rows.reduce<Record<string, number>>((counts, row) => {
-    counts[row.pharmacistName] = (counts[row.pharmacistName] ?? 0) + 1;
+    counts[row.day] = (counts[row.day] ?? 0) + row.patientCount;
 
     return counts;
   }, {});
 }
 
-function buildExecutiveInsights({
-  currentRows,
-  currentTotalPatients,
-  previousRows,
-  previousTotalPatients,
+function getBoundaryDays(rows: DailyPatientDetail[]) {
+  const days = Array.from(
+    new Set(rows.filter((row) => row.patientCount > 0).map((row) => row.day)),
+  ).sort();
+
+  return {
+    firstDay: days[0] ?? null,
+    lastDay: days[days.length - 1] ?? null,
+  };
+}
+
+function buildPharmacistQualitySummaries({
+  dailyPatientRows,
+  qaRows,
+  totalPatients,
 }: {
-  currentRows: QaErrorDetail[];
-  currentTotalPatients: number;
-  previousRows: QaErrorDetail[];
-  previousTotalPatients: number;
-}): Insight[] {
-  const currentCounts = countErrorsByPharmacist(currentRows);
-  const previousCounts = countErrorsByPharmacist(previousRows);
-  const names = Array.from(
-    new Set([...Object.keys(currentCounts), ...Object.keys(previousCounts)]),
+  dailyPatientRows: DailyPatientDetail[];
+  qaRows: QaErrorDetail[];
+  totalPatients: number;
+}): PharmacistQualitySummary[] {
+  const patientCountsByDay = getPatientCountsByDay(dailyPatientRows);
+  const { firstDay, lastDay } = getBoundaryDays(dailyPatientRows);
+  const firstDayPatients = firstDay ? patientCountsByDay[firstDay] ?? 0 : 0;
+  const lastDayPatients = lastDay ? patientCountsByDay[lastDay] ?? 0 : 0;
+  const rowsByPharmacist = qaRows.reduce<Record<string, QaErrorDetail[]>>(
+    (groups, row) => {
+      groups[row.pharmacistName] = groups[row.pharmacistName] ?? [];
+      groups[row.pharmacistName].push(row);
+
+      return groups;
+    },
+    {},
   );
 
-  const rows = names.map((name) => {
-    const currentRate = getErrorRate(currentCounts[name] ?? 0, currentTotalPatients);
-    const previousRate = getErrorRate(previousCounts[name] ?? 0, previousTotalPatients);
+  return Object.entries(rowsByPharmacist)
+    .map(([name, rows]) => {
+      const totalSeverityScore = getTotalSeverityScore(rows);
+      const firstDaySeverityScore = firstDay
+        ? getTotalSeverityScore(rows.filter((row) => row.day === firstDay))
+        : 0;
+      const lastDaySeverityScore = lastDay
+        ? getTotalSeverityScore(rows.filter((row) => row.day === lastDay))
+        : 0;
+      const firstDayRate = getSeverityScoreRate(firstDaySeverityScore, firstDayPatients);
+      const lastDayRate = getSeverityScoreRate(lastDaySeverityScore, lastDayPatients);
 
-    return {
-      currentRate,
-      difference: currentRate - previousRate,
-      name,
-      previousRate,
-    };
-  });
+      return {
+        decline: lastDayRate - firstDayRate,
+        improvement: firstDayRate - lastDayRate,
+        name,
+        severityScoreRate: getSeverityScoreRate(totalSeverityScore, totalPatients),
+        totalPatients,
+        totalQaErrors: rows.length,
+        totalSeverityScore,
+      };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
 
-  const bestPerformer = rows
-    .filter((row) => currentCounts[row.name] > 0)
-    .sort((a, b) => a.currentRate - b.currentRate)[0];
-  const needsAttention = rows
-    .filter((row) => currentCounts[row.name] > 0)
-    .sort((a, b) => b.currentRate - a.currentRate)[0];
-  const biggestImprovement = rows
-    .filter((row) => row.previousRate > 0 || row.currentRate > 0)
-    .sort((a, b) => a.difference - b.difference)[0];
-  const biggestDecline = rows
-    .filter((row) => row.previousRate > 0 || row.currentRate > 0)
-    .sort((a, b) => b.difference - a.difference)[0];
+function toEmptyInsight(label: string): Insight {
+  return {
+    label,
+    name: "No data",
+    severityScoreRate: 0,
+    tone: "neutral",
+    totalPatients: 0,
+    totalQaErrors: 0,
+    totalSeverityScore: 0,
+  };
+}
+
+function toInsight(
+  label: string,
+  row: PharmacistQualitySummary | undefined,
+  tone: Insight["tone"],
+  trendDelta?: number,
+): Insight {
+  if (!row) {
+    return toEmptyInsight(label);
+  }
+
+  return {
+    label,
+    name: row.name,
+    severityScoreRate: row.severityScoreRate,
+    tone,
+    totalPatients: row.totalPatients,
+    totalQaErrors: row.totalQaErrors,
+    totalSeverityScore: row.totalSeverityScore,
+    trendDelta,
+  };
+}
+
+function buildExecutiveInsights(rows: PharmacistQualitySummary[]): Insight[] {
+  const rankedByRate = [...rows].sort(
+    (left, right) =>
+      left.severityScoreRate - right.severityScoreRate ||
+      left.totalSeverityScore - right.totalSeverityScore ||
+      left.name.localeCompare(right.name),
+  );
+  const rankedByImprovement = [...rows]
+    .filter((row) => row.improvement > 0)
+    .sort(
+      (left, right) =>
+        right.improvement - left.improvement ||
+        left.severityScoreRate - right.severityScoreRate ||
+        left.name.localeCompare(right.name),
+    );
+  const rankedByDecline = [...rows]
+    .filter((row) => row.decline > 0)
+    .sort(
+      (left, right) =>
+        right.decline - left.decline ||
+        right.severityScoreRate - left.severityScoreRate ||
+        left.name.localeCompare(right.name),
+    );
 
   return [
-    {
-      ...(bestPerformer ?? {
-        currentRate: 0,
-        difference: 0,
-        name: "No data",
-        previousRate: 0,
-      }),
-      label: "Best Performer",
-      tone: "good" as const,
-    },
-    {
-      ...(needsAttention ?? {
-        currentRate: 0,
-        difference: 0,
-        name: "No data",
-        previousRate: 0,
-      }),
-      label: "Needs Attention",
-      tone: "bad" as const,
-    },
-    {
-      ...(biggestImprovement ?? {
-        currentRate: 0,
-        difference: 0,
-        name: "No data",
-        previousRate: 0,
-      }),
-      label: "Biggest Improvement",
-      tone:
-        biggestImprovement && biggestImprovement.difference < 0
-          ? ("good" as const)
-          : ("neutral" as const),
-    },
-    {
-      ...(biggestDecline ?? {
-        currentRate: 0,
-        difference: 0,
-        name: "No data",
-        previousRate: 0,
-      }),
-      label: "Biggest Decline",
-      tone:
-        biggestDecline && biggestDecline.difference > 0
-          ? ("bad" as const)
-          : ("neutral" as const),
-    },
+    toInsight("Best Performer", rankedByRate[0], rankedByRate[0] ? "good" : "neutral"),
+    toInsight(
+      "Needs Attention",
+      rankedByRate[rankedByRate.length - 1],
+      rankedByRate.length > 0 ? "bad" : "neutral",
+    ),
+    toInsight(
+      "Biggest Improvement",
+      rankedByImprovement[0],
+      rankedByImprovement[0] ? "good" : "neutral",
+      rankedByImprovement[0]?.improvement,
+    ),
+    toInsight(
+      "Biggest Decline",
+      rankedByDecline[0],
+      rankedByDecline[0] ? "bad" : "neutral",
+      rankedByDecline[0]?.decline,
+    ),
   ];
 }
 
@@ -528,33 +593,45 @@ function InsightCard({ insight }: { insight: Insight }) {
             <ArrowIcon aria-hidden="true" className="h-4 w-4" />
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-3 border-t border-white/10 pt-4 text-xs">
+        <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-xs">
           <div>
-            <p className="text-zinc-500">Current</p>
+            <p className="text-zinc-500">Severity rate</p>
             <p className="mt-1 font-mono text-sm text-zinc-100">
-              {formatPercent(insight.currentRate)}
+              {formatRate(insight.severityScoreRate)}
             </p>
           </div>
           <div>
-            <p className="text-zinc-500">Previous</p>
+            <p className="text-zinc-500">Severity score</p>
             <p className="mt-1 font-mono text-sm text-zinc-100">
-              {formatPercent(insight.previousRate)}
+              {formatInteger(insight.totalSeverityScore)}
             </p>
           </div>
           <div>
-            <p className="text-zinc-500">Diff</p>
-            <p
-              className={cn(
-                "mt-1 font-mono text-sm",
-                isImprovement && "text-emerald-300",
-                isDecline && "text-red-300",
-                !isImprovement && !isDecline && "text-zinc-400",
-              )}
-            >
-              {formatSignedPoints(insight.difference)}
+            <p className="text-zinc-500">QA errors</p>
+            <p className="mt-1 font-mono text-sm text-zinc-100">
+              {formatInteger(insight.totalQaErrors)}
+            </p>
+          </div>
+          <div>
+            <p className="text-zinc-500">Patients</p>
+            <p className="mt-1 font-mono text-sm text-zinc-100">
+              {formatInteger(insight.totalPatients)}
             </p>
           </div>
         </div>
+        {typeof insight.trendDelta === "number" ? (
+          <p
+            className={cn(
+              "mt-3 rounded-lg border px-3 py-2 text-xs font-medium",
+              isImprovement && "border-emerald-300/20 bg-emerald-300/10 text-emerald-200",
+              isDecline && "border-red-300/20 bg-red-300/10 text-red-200",
+              !isImprovement && !isDecline && "border-white/10 bg-white/[0.04] text-zinc-400",
+            )}
+          >
+            {isImprovement ? "Improvement" : isDecline ? "Decline" : "Change"}{" "}
+            {formatSignedRate(insight.trendDelta)}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -805,22 +882,28 @@ export function DashboardInteractive({
 }: DashboardInteractiveProps) {
   const [dialogState, setDialogState] = useState<DialogState>(null);
   const [selectedBar, setSelectedBar] = useState<SelectedBar>(null);
-  const averageSeverity = getAverageSeverity(qaErrorDetails);
-  const previousAverageSeverity = getAverageSeverity(previousQaErrorDetails);
-  const executiveInsights = useMemo(
+  const totalSeverityScore = useMemo(() => getTotalSeverityScore(qaErrorDetails), [qaErrorDetails]);
+  const previousTotalSeverityScore = useMemo(
+    () => getTotalSeverityScore(previousQaErrorDetails),
+    [previousQaErrorDetails],
+  );
+  const severityScoreRate = getSeverityScoreRate(totalSeverityScore, totals.totalPatients);
+  const previousSeverityScoreRate = getSeverityScoreRate(
+    previousTotalSeverityScore,
+    previousTotals.totalPatients,
+  );
+  const pharmacistQualitySummaries = useMemo(
     () =>
-      buildExecutiveInsights({
-        currentRows: qaErrorDetails,
-        currentTotalPatients: totals.totalPatients,
-        previousRows: previousQaErrorDetails,
-        previousTotalPatients: previousTotals.totalPatients,
+      buildPharmacistQualitySummaries({
+        dailyPatientRows: dailyPatientDetails,
+        qaRows: qaErrorDetails,
+        totalPatients: totals.totalPatients,
       }),
-    [
-      previousQaErrorDetails,
-      previousTotals.totalPatients,
-      qaErrorDetails,
-      totals.totalPatients,
-    ],
+    [dailyPatientDetails, qaErrorDetails, totals.totalPatients],
+  );
+  const executiveInsights = useMemo(
+    () => buildExecutiveInsights(pharmacistQualitySummaries),
+    [pharmacistQualitySummaries],
   );
   const pharmacistChartData = useMemo(
     () =>
@@ -904,10 +987,10 @@ export function DashboardInteractive({
       <section className="space-y-5">
         <SectionHeading
           eyebrow="Executive Dashboard"
-          subtitle="Leadership snapshot for the selected filters and the matching previous period."
+          subtitle="Quality scoring uses severity score per patient, with pharmacist ranking based on severity score rate."
           title="Executive Summary"
         />
-        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-5">
           <ExecutiveMetricCard
             detail="Patients in the selected date range"
             icon={Users}
@@ -932,13 +1015,20 @@ export function DashboardInteractive({
             value={totals.errorRate}
           />
           <ExecutiveMetricCard
-            detail="Average score across filtered QA errors"
+            detail="Sum of QA severity scores"
             icon={Activity}
-            label="Average Severity"
-            previous={previousAverageSeverity}
-            trendDifferenceFormatter={(value) => `${value > 0 ? "+" : ""}${value.toFixed(2)}`}
-            trendValueFormatter={(value) => value.toFixed(2)}
-            value={averageSeverity}
+            label="Total Severity Score"
+            previous={previousTotalSeverityScore}
+            value={totalSeverityScore}
+          />
+          <ExecutiveMetricCard
+            detail="Total severity score per patient"
+            icon={Activity}
+            label="Severity Score Rate"
+            previous={previousSeverityScoreRate}
+            trendDifferenceFormatter={formatSignedRate}
+            trendValueFormatter={formatRate}
+            value={severityScoreRate}
           />
         </div>
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
