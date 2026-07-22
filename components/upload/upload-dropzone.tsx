@@ -484,7 +484,9 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
       <CardHeader>
         <CardTitle className="text-white">{moduleConfig.moduleLabel} Excel Import</CardTitle>
         <CardDescription>
-          Use the {moduleConfig.moduleLabel} template to preview and validate Sheet1 and Sheet2.
+          {auditType === "non_medical"
+            ? "Headers are read from row 1 of the first worksheet; data begins on row 2."
+            : `Use the ${moduleConfig.moduleLabel} template to preview and validate Sheet1 and Sheet2.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -596,9 +598,11 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
             <CleanDatasetSummary auditType={auditType} result={validationResult} />
             {uploadResult ? <UploadResultSummary result={uploadResult} /> : null}
             <InvalidRowsTable result={validationResult} />
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className={cn("grid gap-4", auditType === "clinical" && "lg:grid-cols-2")}>
               <PreviewTable rows={validationResult.sheet1Rows} sheetName="Sheet1" />
-              <PreviewTable rows={validationResult.sheet2Rows} sheetName="Sheet2" />
+              {auditType === "clinical" ? (
+                <PreviewTable rows={validationResult.sheet2Rows} sheetName="Sheet2" />
+              ) : null}
             </div>
           </div>
         ) : null}

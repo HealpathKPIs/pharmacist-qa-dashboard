@@ -14,6 +14,21 @@ const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
 
 const REQUIRED_SHEET_NAMES = ["Sheet1", "Sheet2"] as const;
 
+export const NON_MEDICAL_REQUIRED_COLUMNS = [
+  "Category",
+  "Agent Name",
+  "Issue Date",
+  "Appointment Id",
+  "Patient ID",
+  "Screen / Voice Attached",
+  "Added Day",
+  "Issue type",
+  "Issue details",
+  "Need Edit",
+  "QA Agent",
+  "Supervisor Comment",
+] as const;
+
 export type WorkbookContract = {
   actorColumn: string;
   idColumn: string;
@@ -43,21 +58,14 @@ const WORKBOOK_CONTRACTS: Record<AuditType, WorkbookContract> = {
     workloadColumn: "NO OF PATIENT",
   },
   non_medical: {
-    actorColumn: "AGENT NAME",
-    idColumn: "CASE ID",
+    actorColumn: "Agent Name",
+    idColumn: "Appointment Id",
     idMustBeNumeric: false,
-    scoreColumn: "SEVERITY SCORE",
-    scoreMaximum: 100,
-    sheet1Columns: ["DAY", "CASES REVIEWED"],
-    sheet2Columns: [
-      "AGENT NAME",
-      "DAY",
-      "CASE ID",
-      "ISSUE",
-      "SEVERITY SCORE",
-      "ISSUE IN DETAILS",
-    ],
-    workloadColumn: "CASES REVIEWED",
+    scoreColumn: "Need Edit",
+    scoreMaximum: 1,
+    sheet1Columns: NON_MEDICAL_REQUIRED_COLUMNS,
+    sheet2Columns: [],
+    workloadColumn: "Issue Date",
   },
 };
 
@@ -124,6 +132,200 @@ function isEmptyCell(value: unknown) {
 
 function isEmptyRow(row: SheetRow) {
   return row.every(isEmptyCell);
+}
+
+function parseNonMedicalDate(
+  value: unknown,
+): { error?: string; value?: Date } {
+  if (isEmptyCell(value)) {
+    return { error: "Issue Date is required." };
+  }
+
+  const excelDate = excelSerialDateToDate(value);
+
+  if (excelDate.value) {
+    return excelDate;
+  }
+
+  const stringValue = removeExtraSpaces(String(value));
+
+  if (
+    value instanceof Date ||
+    typeof value === "number" ||
+    /^-?\d+(?:\.\d+)?$/.test(stringValue)
+  ) {
+    return { error: "Issue Date must be a valid Excel date." };
+  }
+
+  const parsedDate = new Date(stringValue);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return { error: "Issue Date must be a valid Excel date or calendar date." };
+  }
+
+  return {
+    value: new Date(
+      Date.UTC(
+        parsedDate.getUTCFullYear(),
+        parsedDate.getUTCMonth(),
+        parsedDate.getUTCDate(),
+      ),
+    ),
+  };
+}
+
+function isAffirmative(value: unknown) {
+  const normalizedValue = createComparisonKey(String(value ?? ""));
+
+  return ["1", "true", "yes", "y"].includes(normalizedValue);
+}
+
+function formatNonMedicalIssueDetails(
+  row: SheetRow,
+  columns: ColumnLookup,
+) {
+  const detailFields = [
+    ["Issue details", getRequiredValue(row, columns, "Issue details")],
+    ["Category", getRequiredValue(row, columns, "Category")],
+    [
+      "Screen / Voice Attached",
+      getRequiredValue(row, columns, "Screen / Voice Attached"),
+    ],
+    ["Added Day", getRequiredValue(row, columns, "Added Day")],
+    ["Need Edit", getRequiredValue(row, columns, "Need Edit")],
+    ["QA Agent", getRequiredValue(row, columns, "QA Agent")],
+    [
+      "Supervisor Comment",
+      getRequiredValue(row, columns, "Supervisor Comment"),
+    ],
+  ] as const;
+
+  return detailFields
+    .filter(([, value]) => !isEmptyCell(value))
+    .map(([label, value]) => `${label}: ${removeExtraSpaces(String(value))}`)
+    .join(" | ");
+}
+
+function validateNonMedicalWorkbook(
+  workbook: WorkBook,
+): WorkbookValidationResult {
+  const firstSheetName = workbook.SheetNames[0];
+  const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
+  const rows = firstSheet ? worksheetToRows(firstSheet) : [];
+  const dailyPatients: DailyPatientRecord[] = [];
+  const qaErrors: QaErrorRecord[] = [];
+  const invalidRows: InvalidWorkbookRow[] = [];
+  let skippedEmptyRows = 0;
+  let validRows = 0;
+
+  if (!firstSheet) {
+    invalidRows.push({
+      reason: "The workbook must contain at least one worksheet.",
+      rowNumber: 0,
+      sheetName: firstSheetName ?? "First worksheet",
+    });
+  } else {
+    const headerRow = rows[0] ?? [];
+    const actualHeaders = headerRow.map((header) => String(header ?? ""));
+    const headersMatch =
+      actualHeaders.length === NON_MEDICAL_REQUIRED_COLUMNS.length &&
+      NON_MEDICAL_REQUIRED_COLUMNS.every(
+        (expectedHeader, index) => actualHeaders[index] === expectedHeader,
+      );
+
+    if (!headersMatch) {
+      invalidRows.push({
+        reason: `Headers must match this exact order: ${NON_MEDICAL_REQUIRED_COLUMNS.join(", ")}.`,
+        rowNumber: 1,
+        sheetName: firstSheetName,
+      });
+    } else {
+      const columns = buildColumnLookup(headerRow);
+
+      for (const [index, row] of rows.slice(1).entries()) {
+        const rowNumber = index + 2;
+
+        if (isEmptyRow(row)) {
+          skippedEmptyRows += 1;
+          continue;
+        }
+
+        const rowErrors: string[] = [];
+        const rawAgentName = getRequiredValue(row, columns, "Agent Name");
+        const issueDateValue = getRequiredValue(row, columns, "Issue Date");
+        const appointmentIdValue = getRequiredValue(row, columns, "Appointment Id");
+        const patientIdValue = getRequiredValue(row, columns, "Patient ID");
+        const issueTypeValue = getRequiredValue(row, columns, "Issue type");
+        const needEditValue = getRequiredValue(row, columns, "Need Edit");
+        const issueDate = parseNonMedicalDate(issueDateValue);
+
+        if (isEmptyCell(rawAgentName)) {
+          rowErrors.push("Agent Name is required.");
+        }
+
+        if (issueDate.error) {
+          rowErrors.push(issueDate.error);
+        }
+
+        if (isEmptyCell(appointmentIdValue)) {
+          rowErrors.push("Appointment Id is required.");
+        }
+
+        if (row.slice(NON_MEDICAL_REQUIRED_COLUMNS.length).some((cell) => !isEmptyCell(cell))) {
+          rowErrors.push("Unexpected data appears after Supervisor Comment.");
+        }
+
+        if (rowErrors.length > 0 || !issueDate.value) {
+          invalidRows.push({
+            reason: rowErrors.join(" "),
+            rowNumber,
+            sheetName: firstSheetName,
+          });
+          continue;
+        }
+
+        const agentNameRaw = removeExtraSpaces(String(rawAgentName));
+        const appointmentId = removeExtraSpaces(String(appointmentIdValue));
+
+        dailyPatients.push({
+          day: issueDate.value,
+          patientCount: 1,
+        });
+
+        if (!isEmptyCell(issueTypeValue)) {
+          qaErrors.push({
+            day: issueDate.value,
+            issueDetails: formatNonMedicalIssueDetails(row, columns),
+            issueType: normalizeIssueName(String(issueTypeValue)),
+            patientId: isEmptyCell(patientIdValue)
+              ? appointmentId
+              : removeExtraSpaces(String(patientIdValue)),
+            pharmacistName: toTitleCase(agentNameRaw),
+            pharmacistNameRaw: agentNameRaw,
+            score: isAffirmative(needEditValue) ? 1 : 0,
+          });
+        }
+
+        validRows += 1;
+      }
+    }
+  }
+
+  const totalRows = Math.max(rows.length - 1, 0);
+
+  return {
+    dailyPatients,
+    invalidRows,
+    qaErrors,
+    sheet1Rows: rows,
+    sheet2Rows: [],
+    summary: {
+      invalidRows: invalidRows.length,
+      skippedEmptyRows,
+      totalRows,
+      validRows,
+    },
+  };
 }
 
 function buildColumnLookup(headerRow: SheetRow) {
@@ -402,6 +604,10 @@ export function validateWorkbook(
   workbook: WorkBook,
   auditType: AuditType,
 ): WorkbookValidationResult {
+  if (auditType === "non_medical") {
+    return validateNonMedicalWorkbook(workbook);
+  }
+
   const contract = getWorkbookContract(auditType);
   const sheet1Rows = workbook.Sheets.Sheet1
     ? worksheetToRows(workbook.Sheets.Sheet1)

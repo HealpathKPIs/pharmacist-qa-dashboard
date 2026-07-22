@@ -34,9 +34,12 @@ export async function GET(request: Request) {
   const errorsSheet = utils.aoa_to_sheet([[...contract.sheet2Columns]]);
 
   workloadSheet["!cols"] = contract.sheet1Columns.map(() => ({ wch: 22 }));
-  errorsSheet["!cols"] = contract.sheet2Columns.map(() => ({ wch: 24 }));
   utils.book_append_sheet(workbook, workloadSheet, "Sheet1");
-  utils.book_append_sheet(workbook, errorsSheet, "Sheet2");
+
+  if (auditType === "clinical") {
+    errorsSheet["!cols"] = contract.sheet2Columns.map(() => ({ wch: 24 }));
+    utils.book_append_sheet(workbook, errorsSheet, "Sheet2");
+  }
 
   const fileName = `${moduleConfig.moduleLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-upload-template.xlsx`;
   const file = write(workbook, { bookType: "xlsx", type: "buffer" });

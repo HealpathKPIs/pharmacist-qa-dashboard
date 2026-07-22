@@ -11,7 +11,7 @@ export default function NonMedicalUploadPage() {
               Non-Medical QA Upload
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-zinc-400">
-              Validate and import the dedicated Non-Medical QA workbook template.
+              Validate and import the official 12-column Non-Medical QA workbook.
             </p>
           </div>
           <UploadDropzone auditType="non_medical" />
