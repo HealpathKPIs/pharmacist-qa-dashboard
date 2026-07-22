@@ -35,6 +35,12 @@ import type {
   ErrorsByIssue,
   ErrorsByPharmacist,
 } from "@/lib/dashboard-queries";
+import {
+  AUDIT_MODULES,
+  getAuditModule,
+  getAuditPath,
+  type AuditType,
+} from "@/lib/audit-types";
 import { cn } from "@/lib/utils";
 
 type KpiCardConfig = {
@@ -43,29 +49,6 @@ type KpiCardConfig = {
   detail: string;
   icon: typeof Users;
 };
-
-const dashboardNavigationItems = [
-  {
-    href: "/",
-    label: "Dashboard",
-    icon: BarChart3,
-  },
-  {
-    href: "/upload",
-    label: "Upload Data",
-    icon: ClipboardList,
-  },
-  {
-    href: "/uploads",
-    label: "Upload History",
-    icon: History,
-  },
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
-  },
-];
 
 function formatInteger(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
@@ -87,20 +70,48 @@ function getChartMax(values: number[]) {
   return Math.max(1, ...values);
 }
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  auditType = "clinical",
+  children,
+}: {
+  auditType?: AuditType;
+  children: React.ReactNode;
+}) {
+  const moduleConfig = getAuditModule(auditType);
+  const dashboardNavigationItems = [
+    { href: getAuditPath(auditType), label: "Dashboard", icon: BarChart3 },
+    { href: getAuditPath(auditType, "/upload"), label: "Upload", icon: ClipboardList },
+    { href: getAuditPath(auditType, "/uploads"), label: "Upload History", icon: History },
+    { href: getAuditPath(auditType, "/settings"), label: "Settings", icon: Settings },
+  ];
+
   return (
     <div className="min-h-screen bg-[#08090a] text-zinc-100">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-[#0b0d0f] px-4 py-5 lg:block">
-        <Link className="flex items-center gap-3 text-sm font-semibold text-white" href="/">
+        <Link className="flex items-center gap-3 text-sm font-semibold text-white" href={getAuditPath(auditType)}>
           <span className="flex h-9 w-9 items-center justify-center rounded-md border border-emerald-300/25 bg-emerald-300/10 text-emerald-200">
             <LayoutDashboard aria-hidden="true" className="h-4 w-4" />
           </span>
-          Pharmacist QA
+          {moduleConfig.moduleLabel}
         </Link>
-        <nav className="mt-8 space-y-1" aria-label="Dashboard navigation">
+        <nav className="mt-6 grid grid-cols-2 gap-2" aria-label="QA products">
+          {Object.values(AUDIT_MODULES).map((item) => (
+            <Link
+              className={cn(
+                "rounded-md border border-white/10 px-2 py-2 text-center text-xs font-medium text-zinc-500 transition-colors hover:bg-white/10 hover:text-white",
+                item.auditType === auditType && "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
+              )}
+              href={getAuditPath(item.auditType)}
+              key={item.auditType}
+            >
+              {item.moduleLabel}
+            </Link>
+          ))}
+        </nav>
+        <nav className="mt-6 space-y-1" aria-label={`${moduleConfig.moduleLabel} navigation`}>
           {dashboardNavigationItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href === "/";
+            const isActive = item.label === "Dashboard";
 
             return (
               <Link
@@ -122,17 +133,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <div className="border-b border-white/10 bg-[#0b0d0f] px-4 py-3 lg:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <Link className="text-sm font-semibold text-white" href="/">
-            Pharmacist QA
-          </Link>
+        <div className="space-y-3">
+          <nav className="flex gap-2" aria-label="QA products">
+            {Object.values(AUDIT_MODULES).map((item) => (
+              <Link
+                className={cn(
+                  "rounded-md border border-white/10 px-2 py-1.5 text-xs font-medium text-zinc-500",
+                  item.auditType === auditType && "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
+                )}
+                href={getAuditPath(item.auditType)}
+                key={item.auditType}
+              >
+                {item.moduleLabel}
+              </Link>
+            ))}
+          </nav>
           <nav
             aria-label="Mobile navigation"
             className="flex items-center gap-2 overflow-x-auto"
           >
             {dashboardNavigationItems.map((item) => {
               const Icon = item.icon;
-              const isActive = item.href === "/";
+              const isActive = item.label === "Dashboard";
 
               return (
                 <Link
@@ -147,7 +169,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     aria-hidden="true"
                     className={cn("h-4 w-4", isActive && "text-emerald-300")}
                   />
-                  {item.href === "/uploads" ? "History" : item.label}
+                  {item.label === "Upload History" ? "History" : item.label}
                 </Link>
               );
             })}
@@ -160,10 +182,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 }
 
 export function DashboardHeader({
+  auditType = "clinical",
   children,
 }: {
+  auditType?: AuditType;
   children: React.ReactNode;
 }) {
+  const moduleConfig = getAuditModule(auditType);
+
   return (
     <header className="sticky top-0 z-10 border-b border-white/10 bg-[#0b0d0f]/95 backdrop-blur">
       <div className="space-y-5 px-4 py-5 sm:px-6 lg:px-8">
@@ -171,10 +197,10 @@ export function DashboardHeader({
           <div>
             <p className="text-sm text-emerald-300">QA Operations</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-white">
-              Pharmacist QA Dashboard
+              {moduleConfig.dashboardTitle}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-              Monitor patient volume, QA errors, pharmacist distribution, and issue mix.
+              Monitor {moduleConfig.workloadLabelLower}, QA errors, {moduleConfig.actorLabel.toLowerCase()} performance, and issue mix.
             </p>
           </div>
         </div>
@@ -450,7 +476,11 @@ export function TopIssuesTable({ rows }: { rows: ErrorsByIssue[] }) {
   );
 }
 
-export function DashboardEmptyState() {
+export function DashboardEmptyState({
+  auditType = "clinical",
+}: {
+  auditType?: AuditType;
+}) {
   return (
     <Card className="border-dashed border-white/10 bg-white/[0.03] shadow-none">
       <CardContent className="flex flex-col items-center justify-center px-6 py-12 text-center">
@@ -459,7 +489,10 @@ export function DashboardEmptyState() {
         <p className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
           Import a validated workbook to populate KPIs, charts, and ranking tables.
         </p>
-        <Link className={cn(buttonVariants(), "mt-5")} href="/upload">
+        <Link
+          className={cn(buttonVariants(), "mt-5")}
+          href={getAuditPath(auditType, "/upload")}
+        >
           Go to Upload
         </Link>
       </CardContent>

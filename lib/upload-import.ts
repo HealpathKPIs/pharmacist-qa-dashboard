@@ -1,5 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
+import type { AuditType } from "@/lib/audit-types";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import type { WorkbookValidationResult } from "@/lib/excel-validation";
 import type { Database } from "@/types/database";
@@ -123,20 +124,24 @@ async function recordUploadBatch(batch: UploadBatchInsert) {
 }
 
 export async function importValidatedWorkbook({
+  auditType,
   sourceFile,
   validationResult,
 }: {
+  auditType: AuditType;
   sourceFile: string;
   validationResult: WorkbookValidationResult;
 }): Promise<ImportUploadResult> {
   const dailyPatientRows: DailyPatientInsert[] = validationResult.dailyPatients.map(
     (row) => ({
+      audit_type: auditType,
       day: toDatabaseDate(row.day),
       patient_count: row.patientCount,
       source_file: sourceFile,
     }),
   );
   const qaErrorRows: QaErrorInsert[] = validationResult.qaErrors.map((row) => ({
+    audit_type: auditType,
     pharmacist_name: row.pharmacistName,
     pharmacist_name_raw: row.pharmacistNameRaw,
     day: toDatabaseDate(row.day),
@@ -162,6 +167,7 @@ export async function importValidatedWorkbook({
   const skipped = validationResult.summary.skippedEmptyRows;
   const status = getImportStatus(successfullyInserted, failed);
   const uploadBatch = await recordUploadBatch({
+    audit_type: auditType,
     file_name: sourceFile,
     source_file: sourceFile,
     inserted_daily_patients: insertedDailyPatients,

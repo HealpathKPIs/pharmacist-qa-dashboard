@@ -60,6 +60,7 @@ import type {
   QaErrorDetail,
   SeverityDistributionPoint,
 } from "@/lib/dashboard-queries";
+import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import { cn } from "@/lib/utils";
 
 const chartColors = ["#34d399", "#60a5fa", "#f59e0b", "#f472b6", "#a78bfa", "#22d3ee"];
@@ -80,6 +81,7 @@ type DialogState =
   | null;
 
 type DashboardInteractiveProps = {
+  auditType: AuditType;
   dailyPatientDetails: DailyPatientDetail[];
   dailyTrend: DailyTrendPoint[];
   databaseHealthy: boolean;
@@ -333,7 +335,10 @@ function toInsight(
   };
 }
 
-function buildExecutiveInsights(rows: PharmacistQualitySummary[]): Insight[] {
+function buildExecutiveInsights(
+  rows: PharmacistQualitySummary[],
+  bestLabel = "Best Performer",
+): Insight[] {
   const rankedByRate = [...rows].sort(
     (left, right) =>
       left.severityScoreRate - right.severityScoreRate ||
@@ -358,7 +363,7 @@ function buildExecutiveInsights(rows: PharmacistQualitySummary[]): Insight[] {
     );
 
   return [
-    toInsight("Best Performer", rankedByRate[0], rankedByRate[0] ? "good" : "neutral"),
+    toInsight(bestLabel, rankedByRate[0], rankedByRate[0] ? "good" : "neutral"),
     toInsight(
       "Needs Attention",
       rankedByRate[rankedByRate.length - 1],
@@ -585,7 +590,13 @@ function ExecutiveMetricCard({
   );
 }
 
-function InsightCard({ insight }: { insight: Insight }) {
+function InsightCard({
+  insight,
+  workloadLabel = "Patients",
+}: {
+  insight: Insight;
+  workloadLabel?: string;
+}) {
   const isImprovement = insight.tone === "good";
   const isDecline = insight.tone === "bad";
   const ArrowIcon = isImprovement ? ArrowDown : isDecline ? ArrowUp : Minus;
@@ -631,7 +642,7 @@ function InsightCard({ insight }: { insight: Insight }) {
             </p>
           </div>
           <div>
-            <p className="text-zinc-500">Patients</p>
+            <p className="text-zinc-500">{workloadLabel}</p>
             <p className="mt-1 font-mono text-sm text-zinc-100">
               {formatInteger(insight.totalPatients)}
             </p>
@@ -809,9 +820,15 @@ function SystemStatusCard({
   );
 }
 
-function PatientRowsTable({ rows }: { rows: DailyPatientDetail[] }) {
+function PatientRowsTable({
+  rows,
+  workloadLabel = "Patients",
+}: {
+  rows: DailyPatientDetail[];
+  workloadLabel?: string;
+}) {
   if (rows.length === 0) {
-    return <ChartEmptyState label="No daily patient rows match this selection." />;
+    return <ChartEmptyState label={`No daily ${workloadLabel.toLowerCase()} rows match this selection.`} />;
   }
 
   return (
@@ -820,7 +837,7 @@ function PatientRowsTable({ rows }: { rows: DailyPatientDetail[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Day</TableHead>
-            <TableHead className="text-right">Patients</TableHead>
+            <TableHead className="text-right">{workloadLabel}</TableHead>
             <TableHead>Source file</TableHead>
           </TableRow>
         </TableHeader>
@@ -842,7 +859,15 @@ function PatientRowsTable({ rows }: { rows: DailyPatientDetail[] }) {
   );
 }
 
-function QaErrorRowsTable({ rows }: { rows: QaErrorDetail[] }) {
+function QaErrorRowsTable({
+  actorLabel = "Pharmacist",
+  idLabel = "Patient ID",
+  rows,
+}: {
+  actorLabel?: string;
+  idLabel?: string;
+  rows: QaErrorDetail[];
+}) {
   if (rows.length === 0) {
     return <ChartEmptyState label="No QA error records match this selection." />;
   }
@@ -853,8 +878,8 @@ function QaErrorRowsTable({ rows }: { rows: QaErrorDetail[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Day</TableHead>
-            <TableHead>Pharmacist</TableHead>
-            <TableHead>Patient ID</TableHead>
+            <TableHead>{actorLabel}</TableHead>
+            <TableHead>{idLabel}</TableHead>
             <TableHead>Issue</TableHead>
             <TableHead className="text-right">Score</TableHead>
             <TableHead>Details</TableHead>
@@ -886,6 +911,7 @@ function QaErrorRowsTable({ rows }: { rows: QaErrorDetail[] }) {
 }
 
 export function DashboardInteractive({
+  auditType,
   dailyPatientDetails,
   dailyTrend,
   databaseHealthy,
@@ -898,6 +924,7 @@ export function DashboardInteractive({
   severityDistribution,
   totals,
 }: DashboardInteractiveProps) {
+  const moduleConfig = getAuditModule(auditType);
   const [dialogState, setDialogState] = useState<DialogState>(null);
   const [selectedBar, setSelectedBar] = useState<SelectedBar>(null);
   const totalSeverityScore = useMemo(() => getTotalSeverityScore(qaErrorDetails), [qaErrorDetails]);
@@ -925,8 +952,12 @@ export function DashboardInteractive({
     [dailyPatientDetails, qaErrorDetails, totals.totalPatients],
   );
   const executiveInsights = useMemo(
-    () => buildExecutiveInsights(pharmacistQualitySummaries),
-    [pharmacistQualitySummaries],
+    () =>
+      buildExecutiveInsights(
+        pharmacistQualitySummaries,
+        auditType === "non_medical" ? "Best Agent" : "Best Performer",
+      ),
+    [auditType, pharmacistQualitySummaries],
   );
   const pharmacistChartData = useMemo(
     () =>
@@ -964,9 +995,9 @@ export function DashboardInteractive({
 
   function openPatientDialog() {
     setDialogState({
-      description: "Daily patient rows for the selected dashboard filters.",
+      description: `Daily ${moduleConfig.workloadLabelLower} rows for the selected dashboard filters.`,
       patientRows: dailyPatientDetails,
-      title: "Daily Patients",
+      title: `Daily ${moduleConfig.workloadLabel}`,
       type: "patients",
     });
   }
@@ -1010,33 +1041,63 @@ export function DashboardInteractive({
       <section className="space-y-5">
         <SectionHeading
           eyebrow="Executive Dashboard"
-          subtitle="Quality scoring uses severity score per patient, with pharmacist ranking based on severity score rate."
+          subtitle={`Quality scoring uses severity score per ${auditType === "non_medical" ? "case" : "patient"}, with ${moduleConfig.actorLabel.toLowerCase()} ranking based on severity score rate.`}
           title="Executive Summary"
         />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-          <ExecutiveMetricCard
-            detail="Patients in the selected date range"
-            icon={Users}
-            label="Total Patients"
-            previous={previousTotals.totalPatients}
-            value={totals.totalPatients}
-          />
-          <ExecutiveMetricCard
-            detail="Validated QA error records"
-            icon={ClipboardList}
-            label="Total QA Errors"
-            previous={previousTotals.totalQaErrors}
-            value={totals.totalQaErrors}
-          />
-          <ExecutiveMetricCard
-            detail="QA errors per 100 patients"
-            icon={CircleGauge}
-            label="Error Rate"
-            previous={previousTotals.errorRate}
-            trendDifferenceFormatter={formatSignedPoints}
-            trendValueFormatter={formatPercent}
-            value={totals.errorRate}
-          />
+          {auditType === "non_medical" ? (
+            <ExecutiveMetricCard
+              detail="Agents represented in QA error records"
+              icon={Users}
+              label="Total Agents"
+              previous={previousTotals.totalPharmacists}
+              value={totals.totalPharmacists}
+            />
+          ) : (
+            <>
+              <ExecutiveMetricCard
+                detail="Patients in the selected date range"
+                icon={Users}
+                label="Total Patients"
+                previous={previousTotals.totalPatients}
+                value={totals.totalPatients}
+              />
+              <ExecutiveMetricCard
+                detail="Validated QA error records"
+                icon={ClipboardList}
+                label="Total QA Errors"
+                previous={previousTotals.totalQaErrors}
+                value={totals.totalQaErrors}
+              />
+              <ExecutiveMetricCard
+                detail="QA errors per 100 patients"
+                icon={CircleGauge}
+                label="Error Rate"
+                previous={previousTotals.errorRate}
+                trendDifferenceFormatter={formatSignedPoints}
+                trendValueFormatter={formatPercent}
+                value={totals.errorRate}
+              />
+            </>
+          )}
+          {auditType === "non_medical" ? (
+            <>
+              <ExecutiveMetricCard
+                detail="Cases reviewed in the selected date range"
+                icon={ClipboardList}
+                label="Cases Reviewed"
+                previous={previousTotals.totalPatients}
+                value={totals.totalPatients}
+              />
+              <ExecutiveMetricCard
+                detail="Validated Non-Medical QA errors"
+                icon={CircleGauge}
+                label="QA Errors"
+                previous={previousTotals.totalQaErrors}
+                value={totals.totalQaErrors}
+              />
+            </>
+          ) : null}
           <ExecutiveMetricCard
             detail="Sum of QA severity scores"
             icon={Activity}
@@ -1044,15 +1105,17 @@ export function DashboardInteractive({
             previous={previousTotalSeverityScore}
             value={totalSeverityScore}
           />
-          <ExecutiveMetricCard
-            detail="Total severity score per patient"
-            icon={Activity}
-            label="Severity Score Rate"
-            previous={previousSeverityScoreRate}
-            trendDifferenceFormatter={formatSignedRate}
-            trendValueFormatter={formatRate}
-            value={severityScoreRate}
-          />
+          {auditType === "clinical" ? (
+            <ExecutiveMetricCard
+              detail="Total severity score per patient"
+              icon={Activity}
+              label="Severity Score Rate"
+              previous={previousSeverityScoreRate}
+              trendDifferenceFormatter={formatSignedRate}
+              trendValueFormatter={formatRate}
+              value={severityScoreRate}
+            />
+          ) : null}
           <ExecutiveMetricCard
             detail="Average severity points per QA error"
             icon={ClipboardList}
@@ -1065,7 +1128,7 @@ export function DashboardInteractive({
         </div>
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
           {executiveInsights.map((insight) => (
-            <InsightCard insight={insight} key={insight.label} />
+            <InsightCard insight={insight} key={insight.label} workloadLabel={moduleConfig.workloadLabel} />
           ))}
         </div>
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
@@ -1074,6 +1137,7 @@ export function DashboardInteractive({
         </div>
       </section>
 
+      {auditType === "clinical" ? (
       <section className="space-y-4">
         <SectionHeading
           subtitle="Click any card to inspect the records behind the metric."
@@ -1179,10 +1243,11 @@ export function DashboardInteractive({
         />
         </div>
       </section>
+      ) : null}
 
       <section className="space-y-4">
         <SectionHeading
-          subtitle="Trend, severity, pharmacist, and issue distributions update with every filter change."
+          subtitle={`Trend, severity, ${moduleConfig.actorLabel.toLowerCase()}, and issue distributions update with every filter change.`}
           title="Performance Trends"
         />
         <div className="grid gap-4 xl:grid-cols-3">
@@ -1251,10 +1316,10 @@ export function DashboardInteractive({
       <section className="grid gap-4 xl:grid-cols-2">
         <InteractiveBarChart
           data={pharmacistChartData}
-          emptyLabel="No pharmacist chart data for the selected filters."
+          emptyLabel={`No ${moduleConfig.actorLabel.toLowerCase()} chart data for the selected filters.`}
           onBarClick={(payload) => handleBarClick(payload, "pharmacist")}
           selectedName={selectedBar?.type === "pharmacist" ? selectedBar.name : null}
-          title="Errors by Pharmacist"
+          title={`Errors by ${moduleConfig.actorLabel}`}
         />
         <InteractiveBarChart
           data={issueChartData}
@@ -1268,15 +1333,15 @@ export function DashboardInteractive({
       <section className="grid gap-4 xl:grid-cols-3">
         <DonutChartCard
           data={pharmacistChartData}
-          emptyLabel="No pharmacist distribution for the selected filters."
+          emptyLabel={`No ${moduleConfig.actorLabel.toLowerCase()} distribution for the selected filters.`}
           onSliceClick={(name) =>
             openErrorsDialog(
               `Errors by ${name}`,
-              "All QA error records for this pharmacist.",
+              `All QA error records for this ${moduleConfig.actorLabel.toLowerCase()}.`,
               qaErrorDetails.filter((row) => row.pharmacistName === name),
             )
           }
-          title="QA Errors by Pharmacist"
+          title={`QA Errors by ${moduleConfig.actorLabel}`}
         />
         <DonutChartCard
           data={issueChartData}
@@ -1330,7 +1395,13 @@ export function DashboardInteractive({
         </Card>
       </section>
 
-      <DetailDialog dialogState={dialogState} onOpenChange={(open) => !open && setDialogState(null)} />
+      <DetailDialog
+        actorLabel={moduleConfig.actorLabel}
+        dialogState={dialogState}
+        idLabel={auditType === "non_medical" ? "Case ID" : "Patient ID"}
+        onOpenChange={(open) => !open && setDialogState(null)}
+        workloadLabel={moduleConfig.workloadLabel}
+      />
     </>
   );
 }
@@ -1508,11 +1579,17 @@ function DonutChartCard({
 }
 
 function DetailDialog({
+  actorLabel,
   dialogState,
+  idLabel,
   onOpenChange,
+  workloadLabel,
 }: {
+  actorLabel: string;
   dialogState: DialogState;
+  idLabel: string;
   onOpenChange: (open: boolean) => void;
+  workloadLabel: string;
 }) {
   return (
     <Dialog onOpenChange={onOpenChange} open={Boolean(dialogState)}>
@@ -1524,9 +1601,9 @@ function DetailDialog({
               <DialogDescription>{dialogState.description}</DialogDescription>
             </DialogHeader>
             {dialogState.type === "patients" ? (
-              <PatientRowsTable rows={dialogState.patientRows} />
+              <PatientRowsTable rows={dialogState.patientRows} workloadLabel={workloadLabel} />
             ) : (
-              <QaErrorRowsTable rows={dialogState.errorRows} />
+              <QaErrorRowsTable actorLabel={actorLabel} idLabel={idLabel} rows={dialogState.errorRows} />
             )}
           </>
         ) : null}

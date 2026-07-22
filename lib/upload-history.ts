@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { AuditType } from "@/lib/audit-types";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export type UploadHistoryItem = {
@@ -26,7 +27,10 @@ type UploadBatchRow = {
   status: string | null;
 };
 
-export async function getUploadHistory(limit = 50): Promise<UploadHistoryItem[]> {
+export async function getUploadHistory(
+  auditType: AuditType,
+  limit = 50,
+): Promise<UploadHistoryItem[]> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("upload_batches")
@@ -45,6 +49,7 @@ export async function getUploadHistory(limit = 50): Promise<UploadHistoryItem[]>
         "status",
       ].join(","),
     )
+    .eq("audit_type", auditType)
     .order("uploaded_at", { ascending: false })
     .limit(limit)
     .returns<UploadBatchRow[]>();

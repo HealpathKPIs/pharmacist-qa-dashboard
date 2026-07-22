@@ -6,6 +6,7 @@ import { useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import { cn } from "@/lib/utils";
 
 export type DashboardFilterValues = {
@@ -16,14 +17,17 @@ export type DashboardFilterValues = {
 };
 
 export function DashboardFilters({
+  auditType,
   filters,
   issueOptions,
   pharmacistOptions,
 }: {
+  auditType: AuditType;
   filters: DashboardFilterValues;
   issueOptions: string[];
   pharmacistOptions: string[];
 }) {
+  const moduleConfig = getAuditModule(auditType);
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,14 +79,14 @@ export function DashboardFilters({
       </label>
       <label className="space-y-1.5">
         <span className="text-xs font-medium uppercase tracking-normal text-zinc-500">
-          Pharmacist
+          {moduleConfig.actorLabel}
         </span>
         <select
           className="flex h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           onChange={(event) => updateFilter("pharmacistName", event.target.value)}
           value={filters.pharmacistName}
         >
-          <option value="">All pharmacists</option>
+          <option value="">All {moduleConfig.actorLabelPlural.toLowerCase()}</option>
           {pharmacistOptions.map((pharmacistName) => (
             <option key={pharmacistName} value={pharmacistName}>
               {pharmacistName}

@@ -5,6 +5,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Database,
+  Download,
   FileSpreadsheet,
   Table2,
   UploadCloud,
@@ -22,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import type { SheetRow, WorkbookValidationResult } from "@/lib/excel-validation";
 import { excelSerialDateToDate, validateWorkbook } from "@/lib/excel-validation";
 import { cn } from "@/lib/utils";
@@ -169,10 +171,17 @@ function ValidationSummary({ result }: { result: WorkbookValidationResult }) {
   );
 }
 
-function CleanDatasetSummary({ result }: { result: WorkbookValidationResult }) {
+function CleanDatasetSummary({
+  auditType,
+  result,
+}: {
+  auditType: AuditType;
+  result: WorkbookValidationResult;
+}) {
+  const moduleConfig = getAuditModule(auditType);
   const readyItems = [
     {
-      label: "Daily Patients Ready",
+      label: `${moduleConfig.workloadLabel} Ready`,
       value: result.dailyPatients.length,
       icon: Database,
     },
@@ -308,7 +317,8 @@ function UploadResultSummary({ result }: { result: ImportUploadResult }) {
   );
 }
 
-export function UploadDropzone() {
+export function UploadDropzone({ auditType }: { auditType: AuditType }) {
+  const moduleConfig = getAuditModule(auditType);
   const toast = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [validationResult, setValidationResult] =
@@ -386,7 +396,7 @@ export function UploadDropzone() {
 
     try {
       const workbook = read(await selectedFile.arrayBuffer(), { type: "array" });
-      const result = validateWorkbook(workbook);
+      const result = validateWorkbook(workbook, auditType);
 
       setValidationResult(result);
       toast({
@@ -421,6 +431,7 @@ export function UploadDropzone() {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
+      formData.append("auditType", auditType);
       const response = await fetch("/api/upload/import", {
         body: formData,
         method: "POST",
@@ -471,15 +482,15 @@ export function UploadDropzone() {
   return (
     <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
       <CardHeader>
-        <CardTitle className="text-white">Excel Import</CardTitle>
+        <CardTitle className="text-white">{moduleConfig.moduleLabel} Excel Import</CardTitle>
         <CardDescription>
-          Select a .xlsx workbook to preview Sheet1 and Sheet2.
+          Use the {moduleConfig.moduleLabel} template to preview and validate Sheet1 and Sheet2.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <label
           className="group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-emerald-400/30 bg-emerald-400/[0.03] px-6 py-10 text-center transition-colors hover:border-emerald-300/60 hover:bg-emerald-400/[0.06]"
-          htmlFor="excel-file"
+          htmlFor={`${auditType}-excel-file`}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
         >
@@ -490,8 +501,8 @@ export function UploadDropzone() {
             Drag and drop an Excel file here
           </span>
           <span className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
-            Choose the workbook you want to validate. Clean datasets stay in
-            this browser session only.
+            Choose the {moduleConfig.moduleLabel} workbook you want to validate. Its
+            columns and validation rules are isolated from the other QA product.
           </span>
           <span
             className={cn(
@@ -503,7 +514,7 @@ export function UploadDropzone() {
           </span>
           <input
             className="sr-only"
-            id="excel-file"
+            id={`${auditType}-excel-file`}
             name="excel-file"
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={handleFileChange}
@@ -526,6 +537,16 @@ export function UploadDropzone() {
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
+            <a
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "border-white/15 bg-white/5 text-white hover:bg-white/10",
+              )}
+              href={`/api/upload/template?auditType=${auditType}`}
+            >
+              <Download aria-hidden="true" className="h-4 w-4" />
+              Download Template
+            </a>
             <Button
               disabled={!selectedFile || isParsing || isImporting}
               onClick={parseSelectedFile}
@@ -572,7 +593,7 @@ export function UploadDropzone() {
         {validationResult ? (
           <div className="space-y-5">
             <ValidationSummary result={validationResult} />
-            <CleanDatasetSummary result={validationResult} />
+            <CleanDatasetSummary auditType={auditType} result={validationResult} />
             {uploadResult ? <UploadResultSummary result={uploadResult} /> : null}
             <InvalidRowsTable result={validationResult} />
             <div className="grid gap-4 lg:grid-cols-2">

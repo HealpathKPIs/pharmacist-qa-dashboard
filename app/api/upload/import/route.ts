@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { read } from "xlsx";
 
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
+import { isAuditType } from "@/lib/audit-types";
 import { validateWorkbook } from "@/lib/excel-validation";
 import { importValidatedWorkbook } from "@/lib/upload-import";
 
@@ -24,6 +25,14 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const file = formData.get("file");
+  const auditType = formData.get("auditType");
+
+  if (!isAuditType(auditType)) {
+    return NextResponse.json(
+      { error: "A valid audit type is required." },
+      { status: 400 },
+    );
+  }
 
   if (!(file instanceof File)) {
     return NextResponse.json(
@@ -41,8 +50,9 @@ export async function POST(request: Request) {
 
   try {
     const workbook = read(await file.arrayBuffer(), { type: "array" });
-    const validationResult = validateWorkbook(workbook);
+    const validationResult = validateWorkbook(workbook, auditType);
     const importResult = await importValidatedWorkbook({
+      auditType,
       sourceFile: file.name,
       validationResult,
     });

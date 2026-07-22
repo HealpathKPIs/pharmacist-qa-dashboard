@@ -1,25 +1,69 @@
 import { utils, type WorkBook, type WorkSheet } from "xlsx";
 
+import type { AuditType } from "@/lib/audit-types";
 import {
   createComparisonKey,
   normalizeIssueName,
   normalizePharmacistName,
   removeExtraSpaces,
+  toTitleCase,
 } from "@/lib/excel-normalization";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
 
 const REQUIRED_SHEET_NAMES = ["Sheet1", "Sheet2"] as const;
-const SHEET1_REQUIRED_COLUMNS = ["DAY", "NO OF PATIENT"] as const;
-const SHEET2_REQUIRED_COLUMNS = [
-  "PHARMACIST NAME",
-  "DAY",
-  "ID",
-  "ISSUE",
-  "SCORE",
-  "ISSUE IN DETAILS",
-] as const;
+
+export type WorkbookContract = {
+  actorColumn: string;
+  idColumn: string;
+  idMustBeNumeric: boolean;
+  scoreColumn: string;
+  scoreMaximum?: number;
+  sheet1Columns: readonly string[];
+  sheet2Columns: readonly string[];
+  workloadColumn: string;
+};
+
+const WORKBOOK_CONTRACTS: Record<AuditType, WorkbookContract> = {
+  clinical: {
+    actorColumn: "PHARMACIST NAME",
+    idColumn: "ID",
+    idMustBeNumeric: true,
+    scoreColumn: "SCORE",
+    sheet1Columns: ["DAY", "NO OF PATIENT"],
+    sheet2Columns: [
+      "PHARMACIST NAME",
+      "DAY",
+      "ID",
+      "ISSUE",
+      "SCORE",
+      "ISSUE IN DETAILS",
+    ],
+    workloadColumn: "NO OF PATIENT",
+  },
+  non_medical: {
+    actorColumn: "AGENT NAME",
+    idColumn: "CASE ID",
+    idMustBeNumeric: false,
+    scoreColumn: "SEVERITY SCORE",
+    scoreMaximum: 100,
+    sheet1Columns: ["DAY", "CASES REVIEWED"],
+    sheet2Columns: [
+      "AGENT NAME",
+      "DAY",
+      "CASE ID",
+      "ISSUE",
+      "SEVERITY SCORE",
+      "ISSUE IN DETAILS",
+    ],
+    workloadColumn: "CASES REVIEWED",
+  },
+};
+
+export function getWorkbookContract(auditType: AuditType) {
+  return WORKBOOK_CONTRACTS[auditType];
+}
 
 export type SheetRow = unknown[];
 
@@ -107,7 +151,11 @@ function getRequiredValue(
   return columnIndex === undefined ? "" : row[columnIndex];
 }
 
-function parseInteger(value: unknown, label: string, options?: { minimum?: number }) {
+function parseInteger(
+  value: unknown,
+  label: string,
+  options?: { maximum?: number; minimum?: number },
+) {
   if (isEmptyCell(value)) {
     return { error: `${label} is required.` };
   }
@@ -123,21 +171,25 @@ function parseInteger(value: unknown, label: string, options?: { minimum?: numbe
     return { error: `${label} must be ${options.minimum} or greater.` };
   }
 
+  if (options?.maximum !== undefined && numericValue > options.maximum) {
+    return { error: `${label} must be ${options.maximum} or less.` };
+  }
+
   return { value: numericValue };
 }
 
-function parsePatientId(value: unknown) {
+function parseRecordId(value: unknown, contract: WorkbookContract) {
   if (isEmptyCell(value)) {
-    return { error: "ID is required." };
+    return { error: `${contract.idColumn} is required.` };
   }
 
-  const patientId = removeExtraSpaces(String(value));
+  const recordId = removeExtraSpaces(String(value));
 
-  if (!Number.isFinite(Number(patientId))) {
-    return { error: "ID must be numeric." };
+  if (contract.idMustBeNumeric && !Number.isFinite(Number(recordId))) {
+    return { error: `${contract.idColumn} must be numeric.` };
   }
 
-  return { value: patientId };
+  return { value: recordId };
 }
 
 export function excelSerialDateToDate(value: unknown) {
@@ -171,6 +223,7 @@ function collectSheetStructureErrors(
   workbook: WorkBook,
   sheet1Rows: SheetRow[],
   sheet2Rows: SheetRow[],
+  contract: WorkbookContract,
 ) {
   const invalidRows: InvalidWorkbookRow[] = [];
 
@@ -186,7 +239,7 @@ function collectSheetStructureErrors(
 
   if (workbook.Sheets.Sheet1) {
     const sheet1Columns = buildColumnLookup(sheet1Rows[0] ?? []);
-    const missingColumns = getMissingColumns(sheet1Columns, SHEET1_REQUIRED_COLUMNS);
+    const missingColumns = getMissingColumns(sheet1Columns, contract.sheet1Columns);
 
     if (missingColumns.length > 0) {
       invalidRows.push({
@@ -199,7 +252,7 @@ function collectSheetStructureErrors(
 
   if (workbook.Sheets.Sheet2) {
     const sheet2Columns = buildColumnLookup(sheet2Rows[0] ?? []);
-    const missingColumns = getMissingColumns(sheet2Columns, SHEET2_REQUIRED_COLUMNS);
+    const missingColumns = getMissingColumns(sheet2Columns, contract.sheet2Columns);
 
     if (missingColumns.length > 0) {
       invalidRows.push({
@@ -213,7 +266,7 @@ function collectSheetStructureErrors(
   return invalidRows;
 }
 
-function validateDailyPatientsRows(rows: SheetRow[]) {
+function validateDailyPatientsRows(rows: SheetRow[], contract: WorkbookContract) {
   const dailyPatients: DailyPatientRecord[] = [];
   const invalidRows: InvalidWorkbookRow[] = [];
   let skippedEmptyRows = 0;
@@ -222,7 +275,7 @@ function validateDailyPatientsRows(rows: SheetRow[]) {
   for (const [index, row] of rows.slice(1).entries()) {
     const rowNumber = index + 2;
     const dayValue = getRequiredValue(row, columns, "DAY");
-    const patientCountValue = getRequiredValue(row, columns, "NO OF PATIENT");
+    const patientCountValue = getRequiredValue(row, columns, contract.workloadColumn);
 
     if (isEmptyRow(row) || (isEmptyCell(patientCountValue) && !isEmptyCell(dayValue))) {
       skippedEmptyRows += 1;
@@ -231,7 +284,7 @@ function validateDailyPatientsRows(rows: SheetRow[]) {
 
     const rowErrors: string[] = [];
     const day = excelSerialDateToDate(dayValue);
-    const patientCount = parseInteger(patientCountValue, "NO OF PATIENT", {
+    const patientCount = parseInteger(patientCountValue, contract.workloadColumn, {
       minimum: 0,
     });
 
@@ -261,7 +314,11 @@ function validateDailyPatientsRows(rows: SheetRow[]) {
   return { dailyPatients, invalidRows, skippedEmptyRows };
 }
 
-function validateQaErrorRows(rows: SheetRow[]) {
+function validateQaErrorRows(
+  rows: SheetRow[],
+  auditType: AuditType,
+  contract: WorkbookContract,
+) {
   const qaErrors: QaErrorRecord[] = [];
   const invalidRows: InvalidWorkbookRow[] = [];
   let skippedEmptyRows = 0;
@@ -276,19 +333,22 @@ function validateQaErrorRows(rows: SheetRow[]) {
     }
 
     const rowErrors: string[] = [];
-    const rawPharmacistName = getRequiredValue(row, columns, "PHARMACIST NAME");
+    const rawPharmacistName = getRequiredValue(row, columns, contract.actorColumn);
     const dayValue = getRequiredValue(row, columns, "DAY");
-    const patientIdValue = getRequiredValue(row, columns, "ID");
+    const patientIdValue = getRequiredValue(row, columns, contract.idColumn);
     const issueValue = getRequiredValue(row, columns, "ISSUE");
-    const scoreValue = getRequiredValue(row, columns, "SCORE");
+    const scoreValue = getRequiredValue(row, columns, contract.scoreColumn);
     const issueDetailsValue = getRequiredValue(row, columns, "ISSUE IN DETAILS");
 
     const day = excelSerialDateToDate(dayValue);
-    const patientId = parsePatientId(patientIdValue);
-    const score = parseInteger(scoreValue, "SCORE", { minimum: 0 });
+    const patientId = parseRecordId(patientIdValue, contract);
+    const score = parseInteger(scoreValue, contract.scoreColumn, {
+      maximum: contract.scoreMaximum,
+      minimum: 0,
+    });
 
     if (isEmptyCell(rawPharmacistName)) {
-      rowErrors.push("PHARMACIST NAME is required.");
+      rowErrors.push(`${contract.actorColumn} is required.`);
     }
 
     if (day.error) {
@@ -320,7 +380,10 @@ function validateQaErrorRows(rows: SheetRow[]) {
     const issueType = normalizeIssueName(String(issueValue));
 
     qaErrors.push({
-      pharmacistName: normalizePharmacistName(pharmacistNameRaw),
+      pharmacistName:
+        auditType === "clinical"
+          ? normalizePharmacistName(pharmacistNameRaw)
+          : toTitleCase(pharmacistNameRaw),
       pharmacistNameRaw,
       day: day.value,
       patientId: patientId.value,
@@ -335,20 +398,29 @@ function validateQaErrorRows(rows: SheetRow[]) {
   return { qaErrors, invalidRows, skippedEmptyRows };
 }
 
-export function validateWorkbook(workbook: WorkBook): WorkbookValidationResult {
+export function validateWorkbook(
+  workbook: WorkBook,
+  auditType: AuditType,
+): WorkbookValidationResult {
+  const contract = getWorkbookContract(auditType);
   const sheet1Rows = workbook.Sheets.Sheet1
     ? worksheetToRows(workbook.Sheets.Sheet1)
     : [];
   const sheet2Rows = workbook.Sheets.Sheet2
     ? worksheetToRows(workbook.Sheets.Sheet2)
     : [];
-  const structureErrors = collectSheetStructureErrors(workbook, sheet1Rows, sheet2Rows);
+  const structureErrors = collectSheetStructureErrors(
+    workbook,
+    sheet1Rows,
+    sheet2Rows,
+    contract,
+  );
   const canValidateRows = structureErrors.length === 0;
   const dailyPatientsValidation = canValidateRows
-    ? validateDailyPatientsRows(sheet1Rows)
+    ? validateDailyPatientsRows(sheet1Rows, contract)
     : { dailyPatients: [], invalidRows: [], skippedEmptyRows: 0 };
   const qaErrorsValidation = canValidateRows
-    ? validateQaErrorRows(sheet2Rows)
+    ? validateQaErrorRows(sheet2Rows, auditType, contract)
     : { qaErrors: [], invalidRows: [], skippedEmptyRows: 0 };
   const invalidRows = [
     ...structureErrors,

@@ -1,8 +1,10 @@
 import "server-only";
 
+import type { AuditType } from "@/lib/audit-types";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export type DashboardDateRangeFilter = {
+  auditType: AuditType;
   startDate?: Date | string;
   endDate?: Date | string;
   pharmacistName?: string;
@@ -132,6 +134,7 @@ function dateDiffInDays(startDate: Date, endDate: Date) {
 
 function getDateOnlyFilters(filters: DashboardDateRangeFilter) {
   return {
+    auditType: filters.auditType,
     endDate: filters.endDate,
     startDate: filters.startDate,
   };
@@ -155,12 +158,13 @@ function getMostCommonIssue(rows: QaErrorSummaryRow[]) {
 }
 
 async function fetchDailyPatientRows(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<DailyPatientRow[]> {
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("daily_patients")
     .select("day, patient_count")
+    .eq("audit_type", filters.auditType)
     .order("day", { ascending: true });
 
   if (filters.startDate) {
@@ -181,12 +185,13 @@ async function fetchDailyPatientRows(
 }
 
 async function fetchQaErrorSummaryRows(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<QaErrorSummaryRow[]> {
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("qa_errors")
     .select("day, pharmacist_name, issue_type, score")
+    .eq("audit_type", filters.auditType)
     .order("day", { ascending: true });
 
   if (filters.startDate) {
@@ -214,7 +219,7 @@ async function fetchQaErrorSummaryRows(
   return data ?? [];
 }
 
-async function getCurrentDateRange(filters: DashboardDateRangeFilter = {}) {
+async function getCurrentDateRange(filters: DashboardDateRangeFilter) {
   const providedStartDate = filters.startDate
     ? toDatabaseDate(filters.startDate)
     : undefined;
@@ -247,7 +252,7 @@ async function getCurrentDateRange(filters: DashboardDateRangeFilter = {}) {
 }
 
 export async function getPreviousPeriodFilters(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<DashboardDateRangeFilter> {
   const currentRange = await getCurrentDateRange(filters);
 
@@ -276,7 +281,7 @@ export async function getPreviousPeriodFilters(
 }
 
 export async function getTotalPatients(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ) {
   const rows = await fetchDailyPatientRows(getDateOnlyFilters(filters));
 
@@ -284,7 +289,7 @@ export async function getTotalPatients(
 }
 
 export async function getTotalQaErrors(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ) {
   const rows = await fetchQaErrorSummaryRows(filters);
 
@@ -292,14 +297,14 @@ export async function getTotalQaErrors(
 }
 
 export async function getTotalPharmacists(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ) {
   const rows = await fetchQaErrorSummaryRows(filters);
 
   return new Set(rows.map((row) => row.pharmacist_name)).size;
 }
 
-export async function getErrorRate(filters: DashboardDateRangeFilter = {}) {
+export async function getErrorRate(filters: DashboardDateRangeFilter) {
   const [totalPatients, totalQaErrors] = await Promise.all([
     getTotalPatients(filters),
     getTotalQaErrors(filters),
@@ -309,7 +314,7 @@ export async function getErrorRate(filters: DashboardDateRangeFilter = {}) {
 }
 
 export async function getErrorsByPharmacist(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<ErrorsByPharmacist[]> {
   const rows = await fetchQaErrorSummaryRows(filters);
   const groupedRows = new Map<string, number>();
@@ -330,7 +335,7 @@ export async function getErrorsByPharmacist(
 }
 
 export async function getErrorsByIssue(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<ErrorsByIssue[]> {
   const rows = await fetchQaErrorSummaryRows(filters);
   const groupedRows = new Map<string, number>();
@@ -348,7 +353,7 @@ export async function getErrorsByIssue(
 }
 
 export async function getDailyTrend(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<DailyTrendPoint[]> {
   const [dailyPatientRows, qaErrorRows] = await Promise.all([
     fetchDailyPatientRows(getDateOnlyFilters(filters)),
@@ -391,7 +396,7 @@ export async function getDailyTrend(
 }
 
 export async function getDashboardTotals(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<DashboardTotals> {
   const [dailyPatientRows, qaErrorRows] = await Promise.all([
     fetchDailyPatientRows(getDateOnlyFilters(filters)),
@@ -417,12 +422,13 @@ export async function getDashboardTotals(
 }
 
 export async function getDailyPatientDetails(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<DailyPatientDetail[]> {
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("daily_patients")
     .select("id, day, patient_count, source_file, uploaded_at")
+    .eq("audit_type", filters.auditType)
     .order("day", { ascending: true });
 
   if (filters.startDate) {
@@ -449,7 +455,7 @@ export async function getDailyPatientDetails(
 }
 
 export async function getQaErrorDetails(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<QaErrorDetail[]> {
   const supabase = getSupabaseAdminClient();
   let query = supabase
@@ -468,6 +474,7 @@ export async function getQaErrorDetails(
         "uploaded_at",
       ].join(","),
     )
+    .eq("audit_type", filters.auditType)
     .order("day", { ascending: true });
 
   if (filters.startDate) {
@@ -507,7 +514,7 @@ export async function getQaErrorDetails(
 }
 
 export async function getSeverityDistribution(
-  filters: DashboardDateRangeFilter = {},
+  filters: DashboardDateRangeFilter,
 ): Promise<SeverityDistributionPoint[]> {
   const rows = await fetchQaErrorSummaryRows(filters);
   const scoreCounts = new Map<number, number>();
