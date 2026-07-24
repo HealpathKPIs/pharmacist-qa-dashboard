@@ -4,7 +4,10 @@ import { utils, write } from "xlsx";
 
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import { getAuditModule, isAuditType } from "@/lib/audit-types";
-import { getWorkbookContract } from "@/lib/excel-validation";
+import {
+  getTemplateColumns,
+  getWorkbookContract,
+} from "@/lib/excel-validation";
 
 export const runtime = "nodejs";
 
@@ -30,14 +33,17 @@ export async function GET(request: Request) {
   const contract = getWorkbookContract(auditType);
   const moduleConfig = getAuditModule(auditType);
   const workbook = utils.book_new();
-  const workloadSheet = utils.aoa_to_sheet([[...contract.sheet1Columns]]);
-  const errorsSheet = utils.aoa_to_sheet([[...contract.sheet2Columns]]);
+  const sheet1Columns = getTemplateColumns(contract.sheet1);
+  const workloadSheet = utils.aoa_to_sheet([sheet1Columns]);
 
-  workloadSheet["!cols"] = contract.sheet1Columns.map(() => ({ wch: 22 }));
+  workloadSheet["!cols"] = sheet1Columns.map(() => ({ wch: 22 }));
   utils.book_append_sheet(workbook, workloadSheet, "Sheet1");
 
-  if (auditType === "clinical") {
-    errorsSheet["!cols"] = contract.sheet2Columns.map(() => ({ wch: 24 }));
+  if (contract.sheet2) {
+    const sheet2Columns = getTemplateColumns(contract.sheet2);
+    const errorsSheet = utils.aoa_to_sheet([sheet2Columns]);
+
+    errorsSheet["!cols"] = sheet2Columns.map(() => ({ wch: 24 }));
     utils.book_append_sheet(workbook, errorsSheet, "Sheet2");
   }
 

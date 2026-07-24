@@ -4,7 +4,7 @@ import { read } from "xlsx";
 
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 import { isAuditType } from "@/lib/audit-types";
-import { validateWorkbook } from "@/lib/excel-validation";
+import { validateQaWorkbook } from "@/lib/excel-validation";
 import { importValidatedWorkbook } from "@/lib/upload-import";
 
 export const runtime = "nodejs";
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
   try {
     const workbook = read(await file.arrayBuffer(), { type: "array" });
-    const validationResult = validateWorkbook(workbook, auditType);
+    const validationResult = validateQaWorkbook(workbook, auditType);
     const importResult = await importValidatedWorkbook({
       auditType,
       sourceFile: file.name,

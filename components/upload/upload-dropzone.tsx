@@ -25,7 +25,10 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import type { SheetRow, WorkbookValidationResult } from "@/lib/excel-validation";
-import { excelSerialDateToDate, validateWorkbook } from "@/lib/excel-validation";
+import {
+  excelSerialDateToDate,
+  validateQaWorkbook,
+} from "@/lib/excel-validation";
 import { cn } from "@/lib/utils";
 
 type ImportUploadResult = {
@@ -399,7 +402,7 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
 
     try {
       const workbook = read(await selectedFile.arrayBuffer(), { type: "array" });
-      const result = validateWorkbook(workbook, auditType);
+      const result = validateQaWorkbook(workbook, auditType);
 
       setValidationResult(result);
       toast({

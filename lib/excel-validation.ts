@@ -8,19 +8,36 @@ import {
   removeExtraSpaces,
   toTitleCase,
 } from "@/lib/excel-normalization";
+import {
+  getWorkbookColumnValue,
+  validateWorkbook as validateWorkbookColumns,
+  type ColumnLookup,
+  type SheetRow,
+  type WorkbookColumnConfig,
+} from "@/lib/workbook-column-validator";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
 
-const REQUIRED_SHEET_NAMES = ["Sheet1", "Sheet2"] as const;
+export const CLINICAL_SHEET1_REQUIRED_COLUMNS = [
+  "DAY",
+  "NO OF PATIENT",
+] as const;
+export const CLINICAL_SHEET1_OPTIONAL_COLUMNS = [] as const;
+export const CLINICAL_SHEET2_REQUIRED_COLUMNS = [
+  "PHARMACIST NAME",
+  "DAY",
+  "ID",
+  "ISSUE",
+  "SCORE",
+  "ISSUE IN DETAILS",
+] as const;
+export const CLINICAL_SHEET2_OPTIONAL_COLUMNS = [] as const;
 
 export const NON_MEDICAL_REQUIRED_COLUMNS = [
   "Category",
   "Agent Name",
   "Issue Date",
-  "Appointment Id",
-  "Patient ID",
-  "Screen / Voice Attached",
   "Added Day",
   "Issue type",
   "Issue details",
@@ -28,64 +45,52 @@ export const NON_MEDICAL_REQUIRED_COLUMNS = [
   "QA Agent",
   "Supervisor Comment",
 ] as const;
+export const NON_MEDICAL_OPTIONAL_COLUMNS = [
+  "Appointment Id",
+  "Patient ID",
+  "Screen / Voice Attached",
+] as const;
 
 export const DOCTORS_REQUIRED_COLUMNS = [
   "Category",
   "Doctor Name",
   "Consultation Date",
+  "Issue Type",
+  "QA Agent",
+] as const;
+export const DOCTORS_OPTIONAL_COLUMNS = [
   "Patient ID",
   "Attached",
-  "Issue Type",
   "Issue Details",
-  "QA Agent",
 ] as const;
 
 export type WorkbookContract = {
-  actorColumn: string;
-  idColumn: string;
-  idMustBeNumeric: boolean;
-  scoreColumn: string;
-  scoreMaximum?: number;
-  sheet1Columns: readonly string[];
-  sheet2Columns: readonly string[];
-  workloadColumn: string;
+  sheet1: WorkbookColumnConfig;
+  sheet2?: WorkbookColumnConfig;
 };
 
 const WORKBOOK_CONTRACTS: Record<AuditType, WorkbookContract> = {
   clinical: {
-    actorColumn: "PHARMACIST NAME",
-    idColumn: "ID",
-    idMustBeNumeric: true,
-    scoreColumn: "SCORE",
-    sheet1Columns: ["DAY", "NO OF PATIENT"],
-    sheet2Columns: [
-      "PHARMACIST NAME",
-      "DAY",
-      "ID",
-      "ISSUE",
-      "SCORE",
-      "ISSUE IN DETAILS",
-    ],
-    workloadColumn: "NO OF PATIENT",
+    sheet1: {
+      optionalColumns: CLINICAL_SHEET1_OPTIONAL_COLUMNS,
+      requiredColumns: CLINICAL_SHEET1_REQUIRED_COLUMNS,
+    },
+    sheet2: {
+      optionalColumns: CLINICAL_SHEET2_OPTIONAL_COLUMNS,
+      requiredColumns: CLINICAL_SHEET2_REQUIRED_COLUMNS,
+    },
   },
   non_medical: {
-    actorColumn: "Agent Name",
-    idColumn: "Appointment Id",
-    idMustBeNumeric: false,
-    scoreColumn: "Need Edit",
-    scoreMaximum: 1,
-    sheet1Columns: NON_MEDICAL_REQUIRED_COLUMNS,
-    sheet2Columns: [],
-    workloadColumn: "Issue Date",
+    sheet1: {
+      optionalColumns: NON_MEDICAL_OPTIONAL_COLUMNS,
+      requiredColumns: NON_MEDICAL_REQUIRED_COLUMNS,
+    },
   },
   doctors: {
-    actorColumn: "Doctor Name",
-    idColumn: "Patient ID",
-    idMustBeNumeric: false,
-    scoreColumn: "",
-    sheet1Columns: DOCTORS_REQUIRED_COLUMNS,
-    sheet2Columns: [],
-    workloadColumn: "Consultation Date",
+    sheet1: {
+      optionalColumns: DOCTORS_OPTIONAL_COLUMNS,
+      requiredColumns: DOCTORS_REQUIRED_COLUMNS,
+    },
   },
 };
 
@@ -93,7 +98,11 @@ export function getWorkbookContract(auditType: AuditType) {
   return WORKBOOK_CONTRACTS[auditType];
 }
 
-export type SheetRow = unknown[];
+export function getTemplateColumns(config: WorkbookColumnConfig) {
+  return [...config.requiredColumns, ...config.optionalColumns];
+}
+
+export type { SheetRow } from "@/lib/workbook-column-validator";
 
 export type DailyPatientRecord = {
   day: Date;
@@ -132,11 +141,17 @@ export type WorkbookValidationResult = {
   summary: ValidationSummary;
 };
 
-type ColumnLookup = Map<string, number>;
+type PreparedWorksheet = {
+  columns: ColumnLookup;
+  invalidRows: InvalidWorkbookRow[];
+  rows: SheetRow[];
+};
 
-function normalizeHeader(value: unknown) {
-  return createComparisonKey(String(value ?? "")).toLocaleUpperCase("en-US");
-}
+type ParsedSingleSheetRow = {
+  dailyPatient?: DailyPatientRecord;
+  errors?: string[];
+  qaError?: QaErrorRecord;
+};
 
 function worksheetToRows(sheet: WorkSheet) {
   return utils.sheet_to_json<SheetRow>(sheet, {
@@ -147,11 +162,144 @@ function worksheetToRows(sheet: WorkSheet) {
 }
 
 function isEmptyCell(value: unknown) {
-  return value === null || value === undefined || removeExtraSpaces(String(value)) === "";
+  return (
+    value === null ||
+    value === undefined ||
+    removeExtraSpaces(String(value)) === ""
+  );
 }
 
 function isEmptyRow(row: SheetRow) {
   return row.every(isEmptyCell);
+}
+
+function prepareWorksheet(
+  rows: SheetRow[],
+  sheetName: string,
+  config: WorkbookColumnConfig,
+): PreparedWorksheet {
+  const validation = validateWorkbookColumns({
+    optionalColumns: config.optionalColumns,
+    requiredColumns: config.requiredColumns,
+    rows,
+  });
+  const invalidRows =
+    validation.missingRequiredColumns.length > 0
+      ? [
+          {
+            reason: `Missing required column(s): ${validation.missingRequiredColumns.join(", ")}.`,
+            rowNumber: 1,
+            sheetName,
+          },
+        ]
+      : [];
+
+  return {
+    columns: validation.columns,
+    invalidRows,
+    rows: validation.rows,
+  };
+}
+
+function emptyValidationResult(
+  invalidRows: InvalidWorkbookRow[],
+): WorkbookValidationResult {
+  return {
+    dailyPatients: [],
+    invalidRows,
+    qaErrors: [],
+    sheet1Rows: [],
+    sheet2Rows: [],
+    summary: {
+      invalidRows: invalidRows.length,
+      skippedEmptyRows: 0,
+      totalRows: 0,
+      validRows: 0,
+    },
+  };
+}
+
+function validateSingleSheetWorkbook({
+  config,
+  parseRow,
+  workbook,
+}: {
+  config: WorkbookColumnConfig;
+  parseRow: (row: SheetRow, columns: ColumnLookup) => ParsedSingleSheetRow;
+  workbook: WorkBook;
+}): WorkbookValidationResult {
+  const firstSheetName = workbook.SheetNames[0];
+  const firstSheet = firstSheetName
+    ? workbook.Sheets[firstSheetName]
+    : undefined;
+
+  if (!firstSheet) {
+    return emptyValidationResult([
+      {
+        reason: "The workbook must contain at least one worksheet.",
+        rowNumber: 0,
+        sheetName: firstSheetName ?? "First worksheet",
+      },
+    ]);
+  }
+
+  const prepared = prepareWorksheet(
+    worksheetToRows(firstSheet),
+    firstSheetName,
+    config,
+  );
+  const dailyPatients: DailyPatientRecord[] = [];
+  const qaErrors: QaErrorRecord[] = [];
+  const invalidRows = [...prepared.invalidRows];
+  let skippedEmptyRows = 0;
+  let validRows = 0;
+
+  if (prepared.invalidRows.length === 0) {
+    for (const [index, row] of prepared.rows.slice(1).entries()) {
+      const rowNumber = index + 2;
+
+      if (isEmptyRow(row)) {
+        skippedEmptyRows += 1;
+        continue;
+      }
+
+      const parsedRow = parseRow(row, prepared.columns);
+      const errors = parsedRow.errors ?? [];
+
+      if (errors.length > 0) {
+        invalidRows.push({
+          reason: errors.join(" "),
+          rowNumber,
+          sheetName: firstSheetName,
+        });
+        continue;
+      }
+
+      if (parsedRow.dailyPatient) {
+        dailyPatients.push(parsedRow.dailyPatient);
+      }
+
+      if (parsedRow.qaError) {
+        qaErrors.push(parsedRow.qaError);
+      }
+
+      validRows += 1;
+    }
+  }
+
+  return {
+    dailyPatients,
+    invalidRows,
+    qaErrors,
+    sheet1Rows: prepared.rows,
+    sheet2Rows: [],
+    summary: {
+      invalidRows: invalidRows.length,
+      skippedEmptyRows,
+      totalRows: Math.max(prepared.rows.length - 1, 0),
+      validRows,
+    },
+  };
 }
 
 function parseWorksheetDate(
@@ -197,150 +345,87 @@ function parseWorksheetDate(
   };
 }
 
-function formatDoctorsIssueDetails(row: SheetRow, columns: ColumnLookup) {
-  const detailFields = [
-    ["Issue Details", getRequiredValue(row, columns, "Issue Details")],
-    ["Category", getRequiredValue(row, columns, "Category")],
-    ["Attached", getRequiredValue(row, columns, "Attached")],
-    ["QA Agent", getRequiredValue(row, columns, "QA Agent")],
-  ] as const;
-
-  return detailFields
+function formatIssueDetails(
+  row: SheetRow,
+  columns: ColumnLookup,
+  fields: ReadonlyArray<readonly [label: string, columnName: string]>,
+) {
+  return fields
+    .map(
+      ([label, columnName]) =>
+        [label, getWorkbookColumnValue(row, columns, columnName)] as const,
+    )
     .filter(([, value]) => !isEmptyCell(value))
     .map(([label, value]) => `${label}: ${removeExtraSpaces(String(value))}`)
     .join(" | ");
 }
 
-function validateDoctorsWorkbook(
-  workbook: WorkBook,
-): WorkbookValidationResult {
-  const firstSheetName = workbook.SheetNames[0];
-  const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
-  const rows = firstSheet ? worksheetToRows(firstSheet) : [];
-  const dailyPatients: DailyPatientRecord[] = [];
-  const qaErrors: QaErrorRecord[] = [];
-  const invalidRows: InvalidWorkbookRow[] = [];
-  let skippedEmptyRows = 0;
-  let validRows = 0;
+function parseDoctorsRow(
+  row: SheetRow,
+  columns: ColumnLookup,
+): ParsedSingleSheetRow {
+  const categoryValue = getWorkbookColumnValue(row, columns, "Category");
+  const rawDoctorName = getWorkbookColumnValue(row, columns, "Doctor Name");
+  const consultationDateValue = getWorkbookColumnValue(
+    row,
+    columns,
+    "Consultation Date",
+  );
+  const patientIdValue = getWorkbookColumnValue(row, columns, "Patient ID");
+  const issueTypeValue = getWorkbookColumnValue(row, columns, "Issue Type");
+  const qaAgentValue = getWorkbookColumnValue(row, columns, "QA Agent");
+  const consultationDate = parseWorksheetDate(
+    consultationDateValue,
+    "Consultation Date",
+  );
+  const errors: string[] = [];
 
-  if (!firstSheet) {
-    invalidRows.push({
-      reason: "The workbook must contain at least one worksheet.",
-      rowNumber: 0,
-      sheetName: firstSheetName ?? "First worksheet",
-    });
-  } else {
-    const headerRow = rows[0] ?? [];
-    const actualHeaders = headerRow.map((header) => String(header ?? ""));
-    const headersMatch =
-      actualHeaders.length === DOCTORS_REQUIRED_COLUMNS.length &&
-      DOCTORS_REQUIRED_COLUMNS.every(
-        (expectedHeader, index) => actualHeaders[index] === expectedHeader,
-      );
-
-    if (!headersMatch) {
-      invalidRows.push({
-        reason: `Headers must match this exact order: ${DOCTORS_REQUIRED_COLUMNS.join(", ")}.`,
-        rowNumber: 1,
-        sheetName: firstSheetName,
-      });
-    } else {
-      const columns = buildColumnLookup(headerRow);
-
-      for (const [index, row] of rows.slice(1).entries()) {
-        const rowNumber = index + 2;
-
-        if (isEmptyRow(row)) {
-          skippedEmptyRows += 1;
-          continue;
-        }
-
-        const rowErrors: string[] = [];
-        const categoryValue = getRequiredValue(row, columns, "Category");
-        const rawDoctorName = getRequiredValue(row, columns, "Doctor Name");
-        const consultationDateValue = getRequiredValue(
-          row,
-          columns,
-          "Consultation Date",
-        );
-        const patientIdValue = getRequiredValue(row, columns, "Patient ID");
-        const issueTypeValue = getRequiredValue(row, columns, "Issue Type");
-        const qaAgentValue = getRequiredValue(row, columns, "QA Agent");
-        const consultationDate = parseWorksheetDate(
-          consultationDateValue,
-          "Consultation Date",
-        );
-
-        if (isEmptyCell(categoryValue)) {
-          rowErrors.push("Category is required.");
-        }
-
-        if (isEmptyCell(rawDoctorName)) {
-          rowErrors.push("Doctor Name is required.");
-        }
-
-        if (consultationDate.error) {
-          rowErrors.push(consultationDate.error);
-        }
-
-        if (isEmptyCell(issueTypeValue)) {
-          rowErrors.push("Issue Type is required.");
-        }
-
-        if (isEmptyCell(qaAgentValue)) {
-          rowErrors.push("QA Agent is required.");
-        }
-
-        if (
-          row
-            .slice(DOCTORS_REQUIRED_COLUMNS.length)
-            .some((cell) => !isEmptyCell(cell))
-        ) {
-          rowErrors.push("Unexpected data appears after QA Agent.");
-        }
-
-        if (rowErrors.length > 0 || !consultationDate.value) {
-          invalidRows.push({
-            reason: rowErrors.join(" "),
-            rowNumber,
-            sheetName: firstSheetName,
-          });
-          continue;
-        }
-
-        const doctorNameRaw = removeExtraSpaces(String(rawDoctorName));
-
-        dailyPatients.push({
-          day: consultationDate.value,
-          patientCount: 1,
-        });
-        qaErrors.push({
-          day: consultationDate.value,
-          issueDetails: formatDoctorsIssueDetails(row, columns),
-          issueType: normalizeIssueName(String(issueTypeValue)),
-          patientId: isEmptyCell(patientIdValue)
-            ? ""
-            : removeExtraSpaces(String(patientIdValue)),
-          pharmacistName: toTitleCase(doctorNameRaw),
-          pharmacistNameRaw: doctorNameRaw,
-          score: 1,
-        });
-        validRows += 1;
-      }
-    }
+  if (isEmptyCell(categoryValue)) {
+    errors.push("Category is required.");
   }
 
+  if (isEmptyCell(rawDoctorName)) {
+    errors.push("Doctor Name is required.");
+  }
+
+  if (consultationDate.error) {
+    errors.push(consultationDate.error);
+  }
+
+  if (isEmptyCell(issueTypeValue)) {
+    errors.push("Issue Type is required.");
+  }
+
+  if (isEmptyCell(qaAgentValue)) {
+    errors.push("QA Agent is required.");
+  }
+
+  if (errors.length > 0 || !consultationDate.value) {
+    return { errors };
+  }
+
+  const doctorNameRaw = removeExtraSpaces(String(rawDoctorName));
+
   return {
-    dailyPatients,
-    invalidRows,
-    qaErrors,
-    sheet1Rows: rows,
-    sheet2Rows: [],
-    summary: {
-      invalidRows: invalidRows.length,
-      skippedEmptyRows,
-      totalRows: Math.max(rows.length - 1, 0),
-      validRows,
+    dailyPatient: {
+      day: consultationDate.value,
+      patientCount: 1,
+    },
+    qaError: {
+      day: consultationDate.value,
+      issueDetails: formatIssueDetails(row, columns, [
+        ["Issue Details", "Issue Details"],
+        ["Category", "Category"],
+        ["Attached", "Attached"],
+        ["QA Agent", "QA Agent"],
+      ]),
+      issueType: normalizeIssueName(String(issueTypeValue)),
+      patientId: isEmptyCell(patientIdValue)
+        ? ""
+        : removeExtraSpaces(String(patientIdValue)),
+      pharmacistName: toTitleCase(doctorNameRaw),
+      pharmacistNameRaw: doctorNameRaw,
+      score: 1,
     },
   };
 }
@@ -351,177 +436,69 @@ function isAffirmative(value: unknown) {
   return ["1", "true", "yes", "y"].includes(normalizedValue);
 }
 
-function formatNonMedicalIssueDetails(
+function parseNonMedicalRow(
   row: SheetRow,
   columns: ColumnLookup,
-) {
-  const detailFields = [
-    ["Issue details", getRequiredValue(row, columns, "Issue details")],
-    ["Category", getRequiredValue(row, columns, "Category")],
-    [
-      "Screen / Voice Attached",
-      getRequiredValue(row, columns, "Screen / Voice Attached"),
-    ],
-    ["Added Day", getRequiredValue(row, columns, "Added Day")],
-    ["Need Edit", getRequiredValue(row, columns, "Need Edit")],
-    ["QA Agent", getRequiredValue(row, columns, "QA Agent")],
-    [
-      "Supervisor Comment",
-      getRequiredValue(row, columns, "Supervisor Comment"),
-    ],
-  ] as const;
+): ParsedSingleSheetRow {
+  const rawAgentName = getWorkbookColumnValue(row, columns, "Agent Name");
+  const issueDateValue = getWorkbookColumnValue(row, columns, "Issue Date");
+  const appointmentIdValue = getWorkbookColumnValue(
+    row,
+    columns,
+    "Appointment Id",
+  );
+  const patientIdValue = getWorkbookColumnValue(row, columns, "Patient ID");
+  const issueTypeValue = getWorkbookColumnValue(row, columns, "Issue type");
+  const needEditValue = getWorkbookColumnValue(row, columns, "Need Edit");
+  const issueDate = parseWorksheetDate(issueDateValue, "Issue Date");
+  const errors: string[] = [];
 
-  return detailFields
-    .filter(([, value]) => !isEmptyCell(value))
-    .map(([label, value]) => `${label}: ${removeExtraSpaces(String(value))}`)
-    .join(" | ");
-}
-
-function validateNonMedicalWorkbook(
-  workbook: WorkBook,
-): WorkbookValidationResult {
-  const firstSheetName = workbook.SheetNames[0];
-  const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
-  const rows = firstSheet ? worksheetToRows(firstSheet) : [];
-  const dailyPatients: DailyPatientRecord[] = [];
-  const qaErrors: QaErrorRecord[] = [];
-  const invalidRows: InvalidWorkbookRow[] = [];
-  let skippedEmptyRows = 0;
-  let validRows = 0;
-
-  if (!firstSheet) {
-    invalidRows.push({
-      reason: "The workbook must contain at least one worksheet.",
-      rowNumber: 0,
-      sheetName: firstSheetName ?? "First worksheet",
-    });
-  } else {
-    const headerRow = rows[0] ?? [];
-    const actualHeaders = headerRow.map((header) => String(header ?? ""));
-    const headersMatch =
-      actualHeaders.length === NON_MEDICAL_REQUIRED_COLUMNS.length &&
-      NON_MEDICAL_REQUIRED_COLUMNS.every(
-        (expectedHeader, index) => actualHeaders[index] === expectedHeader,
-      );
-
-    if (!headersMatch) {
-      invalidRows.push({
-        reason: `Headers must match this exact order: ${NON_MEDICAL_REQUIRED_COLUMNS.join(", ")}.`,
-        rowNumber: 1,
-        sheetName: firstSheetName,
-      });
-    } else {
-      const columns = buildColumnLookup(headerRow);
-
-      for (const [index, row] of rows.slice(1).entries()) {
-        const rowNumber = index + 2;
-
-        if (isEmptyRow(row)) {
-          skippedEmptyRows += 1;
-          continue;
-        }
-
-        const rowErrors: string[] = [];
-        const rawAgentName = getRequiredValue(row, columns, "Agent Name");
-        const issueDateValue = getRequiredValue(row, columns, "Issue Date");
-        const appointmentIdValue = getRequiredValue(row, columns, "Appointment Id");
-        const patientIdValue = getRequiredValue(row, columns, "Patient ID");
-        const issueTypeValue = getRequiredValue(row, columns, "Issue type");
-        const needEditValue = getRequiredValue(row, columns, "Need Edit");
-        const issueDate = parseWorksheetDate(issueDateValue, "Issue Date");
-
-        if (isEmptyCell(rawAgentName)) {
-          rowErrors.push("Agent Name is required.");
-        }
-
-        if (issueDate.error) {
-          rowErrors.push(issueDate.error);
-        }
-
-        if (isEmptyCell(appointmentIdValue)) {
-          rowErrors.push("Appointment Id is required.");
-        }
-
-        if (row.slice(NON_MEDICAL_REQUIRED_COLUMNS.length).some((cell) => !isEmptyCell(cell))) {
-          rowErrors.push("Unexpected data appears after Supervisor Comment.");
-        }
-
-        if (rowErrors.length > 0 || !issueDate.value) {
-          invalidRows.push({
-            reason: rowErrors.join(" "),
-            rowNumber,
-            sheetName: firstSheetName,
-          });
-          continue;
-        }
-
-        const agentNameRaw = removeExtraSpaces(String(rawAgentName));
-        const appointmentId = removeExtraSpaces(String(appointmentIdValue));
-
-        dailyPatients.push({
-          day: issueDate.value,
-          patientCount: 1,
-        });
-
-        if (!isEmptyCell(issueTypeValue)) {
-          qaErrors.push({
-            day: issueDate.value,
-            issueDetails: formatNonMedicalIssueDetails(row, columns),
-            issueType: normalizeIssueName(String(issueTypeValue)),
-            patientId: isEmptyCell(patientIdValue)
-              ? appointmentId
-              : removeExtraSpaces(String(patientIdValue)),
-            pharmacistName: toTitleCase(agentNameRaw),
-            pharmacistNameRaw: agentNameRaw,
-            score: isAffirmative(needEditValue) ? 1 : 0,
-          });
-        }
-
-        validRows += 1;
-      }
-    }
+  if (isEmptyCell(rawAgentName)) {
+    errors.push("Agent Name is required.");
   }
 
-  const totalRows = Math.max(rows.length - 1, 0);
+  if (issueDate.error) {
+    errors.push(issueDate.error);
+  }
 
-  return {
-    dailyPatients,
-    invalidRows,
-    qaErrors,
-    sheet1Rows: rows,
-    sheet2Rows: [],
-    summary: {
-      invalidRows: invalidRows.length,
-      skippedEmptyRows,
-      totalRows,
-      validRows,
+  if (errors.length > 0 || !issueDate.value) {
+    return { errors };
+  }
+
+  const agentNameRaw = removeExtraSpaces(String(rawAgentName));
+  const appointmentId = isEmptyCell(appointmentIdValue)
+    ? ""
+    : removeExtraSpaces(String(appointmentIdValue));
+  const parsedRow: ParsedSingleSheetRow = {
+    dailyPatient: {
+      day: issueDate.value,
+      patientCount: 1,
     },
   };
-}
 
-function buildColumnLookup(headerRow: SheetRow) {
-  return headerRow.reduce<ColumnLookup>((columns, header, index) => {
-    const normalizedHeader = normalizeHeader(header);
+  if (!isEmptyCell(issueTypeValue)) {
+    parsedRow.qaError = {
+      day: issueDate.value,
+      issueDetails: formatIssueDetails(row, columns, [
+        ["Issue details", "Issue details"],
+        ["Category", "Category"],
+        ["Screen / Voice Attached", "Screen / Voice Attached"],
+        ["Added Day", "Added Day"],
+        ["Need Edit", "Need Edit"],
+        ["QA Agent", "QA Agent"],
+        ["Supervisor Comment", "Supervisor Comment"],
+      ]),
+      issueType: normalizeIssueName(String(issueTypeValue)),
+      patientId: isEmptyCell(patientIdValue)
+        ? appointmentId
+        : removeExtraSpaces(String(patientIdValue)),
+      pharmacistName: toTitleCase(agentNameRaw),
+      pharmacistNameRaw: agentNameRaw,
+      score: isAffirmative(needEditValue) ? 1 : 0,
+    };
+  }
 
-    if (normalizedHeader) {
-      columns.set(normalizedHeader, index);
-    }
-
-    return columns;
-  }, new Map());
-}
-
-function getMissingColumns(columns: ColumnLookup, requiredColumns: readonly string[]) {
-  return requiredColumns.filter((column) => !columns.has(normalizeHeader(column)));
-}
-
-function getRequiredValue(
-  row: SheetRow,
-  columns: ColumnLookup,
-  columnName: string,
-) {
-  const columnIndex = columns.get(normalizeHeader(columnName));
-  return columnIndex === undefined ? "" : row[columnIndex];
+  return parsedRow;
 }
 
 function parseInteger(
@@ -534,7 +511,9 @@ function parseInteger(
   }
 
   const numericValue =
-    typeof value === "number" ? value : Number(removeExtraSpaces(String(value)));
+    typeof value === "number"
+      ? value
+      : Number(removeExtraSpaces(String(value)));
 
   if (!Number.isFinite(numericValue) || !Number.isInteger(numericValue)) {
     return { error: `${label} must be an integer.` };
@@ -551,15 +530,15 @@ function parseInteger(
   return { value: numericValue };
 }
 
-function parseRecordId(value: unknown, contract: WorkbookContract) {
+function parseClinicalRecordId(value: unknown) {
   if (isEmptyCell(value)) {
-    return { error: `${contract.idColumn} is required.` };
+    return { error: "ID is required." };
   }
 
   const recordId = removeExtraSpaces(String(value));
 
-  if (contract.idMustBeNumeric && !Number.isFinite(Number(recordId))) {
-    return { error: `${contract.idColumn} must be numeric.` };
+  if (!Number.isFinite(Number(recordId))) {
+    return { error: "ID must be numeric." };
   }
 
   return { value: recordId };
@@ -583,97 +562,70 @@ export function excelSerialDateToDate(value: unknown) {
   }
 
   const serialDate =
-    typeof value === "number" ? value : Number(removeExtraSpaces(String(value)));
+    typeof value === "number"
+      ? value
+      : Number(removeExtraSpaces(String(value)));
 
-  if (!Number.isFinite(serialDate) || !Number.isInteger(serialDate) || serialDate <= 0) {
+  if (
+    !Number.isFinite(serialDate) ||
+    !Number.isInteger(serialDate) ||
+    serialDate <= 0
+  ) {
     return { error: "DAY must be a valid Excel serial date." };
   }
 
-  return { value: new Date(EXCEL_EPOCH_UTC + serialDate * MILLISECONDS_PER_DAY) };
+  return {
+    value: new Date(EXCEL_EPOCH_UTC + serialDate * MILLISECONDS_PER_DAY),
+  };
 }
 
-function collectSheetStructureErrors(
-  workbook: WorkBook,
-  sheet1Rows: SheetRow[],
-  sheet2Rows: SheetRow[],
-  contract: WorkbookContract,
-) {
-  const invalidRows: InvalidWorkbookRow[] = [];
-
-  for (const sheetName of REQUIRED_SHEET_NAMES) {
-    if (!workbook.Sheets[sheetName]) {
-      invalidRows.push({
-        sheetName,
-        rowNumber: 0,
-        reason: `${sheetName} is missing.`,
-      });
-    }
-  }
-
-  if (workbook.Sheets.Sheet1) {
-    const sheet1Columns = buildColumnLookup(sheet1Rows[0] ?? []);
-    const missingColumns = getMissingColumns(sheet1Columns, contract.sheet1Columns);
-
-    if (missingColumns.length > 0) {
-      invalidRows.push({
-        sheetName: "Sheet1",
-        rowNumber: 1,
-        reason: `Missing required column(s): ${missingColumns.join(", ")}.`,
-      });
-    }
-  }
-
-  if (workbook.Sheets.Sheet2) {
-    const sheet2Columns = buildColumnLookup(sheet2Rows[0] ?? []);
-    const missingColumns = getMissingColumns(sheet2Columns, contract.sheet2Columns);
-
-    if (missingColumns.length > 0) {
-      invalidRows.push({
-        sheetName: "Sheet2",
-        rowNumber: 1,
-        reason: `Missing required column(s): ${missingColumns.join(", ")}.`,
-      });
-    }
-  }
-
-  return invalidRows;
-}
-
-function validateDailyPatientsRows(rows: SheetRow[], contract: WorkbookContract) {
+function validateClinicalDailyPatientRows(
+  prepared: PreparedWorksheet,
+): {
+  dailyPatients: DailyPatientRecord[];
+  invalidRows: InvalidWorkbookRow[];
+  skippedEmptyRows: number;
+} {
   const dailyPatients: DailyPatientRecord[] = [];
   const invalidRows: InvalidWorkbookRow[] = [];
   let skippedEmptyRows = 0;
-  const columns = buildColumnLookup(rows[0] ?? []);
 
-  for (const [index, row] of rows.slice(1).entries()) {
+  for (const [index, row] of prepared.rows.slice(1).entries()) {
     const rowNumber = index + 2;
-    const dayValue = getRequiredValue(row, columns, "DAY");
-    const patientCountValue = getRequiredValue(row, columns, contract.workloadColumn);
+    const dayValue = getWorkbookColumnValue(row, prepared.columns, "DAY");
+    const patientCountValue = getWorkbookColumnValue(
+      row,
+      prepared.columns,
+      "NO OF PATIENT",
+    );
 
-    if (isEmptyRow(row) || (isEmptyCell(patientCountValue) && !isEmptyCell(dayValue))) {
+    if (
+      isEmptyRow(row) ||
+      (isEmptyCell(patientCountValue) && !isEmptyCell(dayValue))
+    ) {
       skippedEmptyRows += 1;
       continue;
     }
 
-    const rowErrors: string[] = [];
+    const errors: string[] = [];
     const day = excelSerialDateToDate(dayValue);
-    const patientCount = parseInteger(patientCountValue, contract.workloadColumn, {
+    const patientCount = parseInteger(patientCountValue, "NO OF PATIENT", {
       minimum: 0,
     });
 
     if (day.error) {
-      rowErrors.push(day.error);
+      errors.push(day.error);
     }
 
     if (patientCount.error) {
-      rowErrors.push(patientCount.error);
+      errors.push(patientCount.error);
     }
 
-    if (rowErrors.length > 0 || !day.value || patientCount.value === undefined) {
+    if (errors.length > 0 || !day.value || patientCount.value === undefined) {
       invalidRows.push({
-        sheetName: "Sheet1",
+        reason: errors.join(" "),
         rowNumber,
-        reason: rowErrors.join(" "),
+        sheetName: "Sheet1",
       });
       continue;
     }
@@ -687,17 +639,18 @@ function validateDailyPatientsRows(rows: SheetRow[], contract: WorkbookContract)
   return { dailyPatients, invalidRows, skippedEmptyRows };
 }
 
-function validateQaErrorRows(
-  rows: SheetRow[],
-  auditType: AuditType,
-  contract: WorkbookContract,
-) {
+function validateClinicalQaErrorRows(
+  prepared: PreparedWorksheet,
+): {
+  invalidRows: InvalidWorkbookRow[];
+  qaErrors: QaErrorRecord[];
+  skippedEmptyRows: number;
+} {
   const qaErrors: QaErrorRecord[] = [];
   const invalidRows: InvalidWorkbookRow[] = [];
   let skippedEmptyRows = 0;
-  const columns = buildColumnLookup(rows[0] ?? []);
 
-  for (const [index, row] of rows.slice(1).entries()) {
+  for (const [index, row] of prepared.rows.slice(1).entries()) {
     const rowNumber = index + 2;
 
     if (isEmptyRow(row)) {
@@ -705,126 +658,177 @@ function validateQaErrorRows(
       continue;
     }
 
-    const rowErrors: string[] = [];
-    const rawPharmacistName = getRequiredValue(row, columns, contract.actorColumn);
-    const dayValue = getRequiredValue(row, columns, "DAY");
-    const patientIdValue = getRequiredValue(row, columns, contract.idColumn);
-    const issueValue = getRequiredValue(row, columns, "ISSUE");
-    const scoreValue = getRequiredValue(row, columns, contract.scoreColumn);
-    const issueDetailsValue = getRequiredValue(row, columns, "ISSUE IN DETAILS");
-
+    const errors: string[] = [];
+    const rawPharmacistName = getWorkbookColumnValue(
+      row,
+      prepared.columns,
+      "PHARMACIST NAME",
+    );
+    const dayValue = getWorkbookColumnValue(row, prepared.columns, "DAY");
+    const patientIdValue = getWorkbookColumnValue(
+      row,
+      prepared.columns,
+      "ID",
+    );
+    const issueValue = getWorkbookColumnValue(
+      row,
+      prepared.columns,
+      "ISSUE",
+    );
+    const scoreValue = getWorkbookColumnValue(
+      row,
+      prepared.columns,
+      "SCORE",
+    );
+    const issueDetailsValue = getWorkbookColumnValue(
+      row,
+      prepared.columns,
+      "ISSUE IN DETAILS",
+    );
     const day = excelSerialDateToDate(dayValue);
-    const patientId = parseRecordId(patientIdValue, contract);
-    const score = parseInteger(scoreValue, contract.scoreColumn, {
-      maximum: contract.scoreMaximum,
-      minimum: 0,
-    });
+    const patientId = parseClinicalRecordId(patientIdValue);
+    const score = parseInteger(scoreValue, "SCORE", { minimum: 0 });
 
     if (isEmptyCell(rawPharmacistName)) {
-      rowErrors.push(`${contract.actorColumn} is required.`);
+      errors.push("PHARMACIST NAME is required.");
     }
 
     if (day.error) {
-      rowErrors.push(day.error);
+      errors.push(day.error);
     }
 
     if (patientId.error) {
-      rowErrors.push(patientId.error);
+      errors.push(patientId.error);
     }
 
     if (isEmptyCell(issueValue)) {
-      rowErrors.push("ISSUE is required.");
+      errors.push("ISSUE is required.");
     }
 
     if (score.error) {
-      rowErrors.push(score.error);
+      errors.push(score.error);
     }
 
-    if (rowErrors.length > 0 || !day.value || !patientId.value || score.value === undefined) {
+    if (
+      errors.length > 0 ||
+      !day.value ||
+      !patientId.value ||
+      score.value === undefined
+    ) {
       invalidRows.push({
-        sheetName: "Sheet2",
+        reason: errors.join(" "),
         rowNumber,
-        reason: rowErrors.join(" "),
+        sheetName: "Sheet2",
       });
       continue;
     }
 
     const pharmacistNameRaw = removeExtraSpaces(String(rawPharmacistName));
-    const issueType = normalizeIssueName(String(issueValue));
 
     qaErrors.push({
-      pharmacistName:
-        auditType === "clinical"
-          ? normalizePharmacistName(pharmacistNameRaw)
-          : toTitleCase(pharmacistNameRaw),
-      pharmacistNameRaw,
       day: day.value,
-      patientId: patientId.value,
-      issueType,
-      score: score.value,
       issueDetails: isEmptyCell(issueDetailsValue)
         ? ""
         : removeExtraSpaces(String(issueDetailsValue)),
+      issueType: normalizeIssueName(String(issueValue)),
+      patientId: patientId.value,
+      pharmacistName: normalizePharmacistName(pharmacistNameRaw),
+      pharmacistNameRaw,
+      score: score.value,
     });
   }
 
-  return { qaErrors, invalidRows, skippedEmptyRows };
+  return { invalidRows, qaErrors, skippedEmptyRows };
 }
 
-export function validateWorkbook(
-  workbook: WorkBook,
-  auditType: AuditType,
-): WorkbookValidationResult {
-  if (auditType === "non_medical") {
-    return validateNonMedicalWorkbook(workbook);
+function validateClinicalWorkbook(workbook: WorkBook): WorkbookValidationResult {
+  const contract = getWorkbookContract("clinical");
+  const missingSheetErrors: InvalidWorkbookRow[] = [];
+
+  if (!workbook.Sheets.Sheet1) {
+    missingSheetErrors.push({
+      reason: "Sheet1 is missing.",
+      rowNumber: 0,
+      sheetName: "Sheet1",
+    });
   }
 
-  if (auditType === "doctors") {
-    return validateDoctorsWorkbook(workbook);
+  if (!workbook.Sheets.Sheet2) {
+    missingSheetErrors.push({
+      reason: "Sheet2 is missing.",
+      rowNumber: 0,
+      sheetName: "Sheet2",
+    });
   }
 
-  const contract = getWorkbookContract(auditType);
-  const sheet1Rows = workbook.Sheets.Sheet1
-    ? worksheetToRows(workbook.Sheets.Sheet1)
-    : [];
-  const sheet2Rows = workbook.Sheets.Sheet2
-    ? worksheetToRows(workbook.Sheets.Sheet2)
-    : [];
-  const structureErrors = collectSheetStructureErrors(
-    workbook,
-    sheet1Rows,
-    sheet2Rows,
-    contract,
-  );
+  const preparedSheet1 = workbook.Sheets.Sheet1
+    ? prepareWorksheet(
+        worksheetToRows(workbook.Sheets.Sheet1),
+        "Sheet1",
+        contract.sheet1,
+      )
+    : { columns: new Map(), invalidRows: [], rows: [] };
+  const preparedSheet2 =
+    workbook.Sheets.Sheet2 && contract.sheet2
+      ? prepareWorksheet(
+          worksheetToRows(workbook.Sheets.Sheet2),
+          "Sheet2",
+          contract.sheet2,
+        )
+      : { columns: new Map(), invalidRows: [], rows: [] };
+  const structureErrors = [
+    ...missingSheetErrors,
+    ...preparedSheet1.invalidRows,
+    ...preparedSheet2.invalidRows,
+  ];
   const canValidateRows = structureErrors.length === 0;
   const dailyPatientsValidation = canValidateRows
-    ? validateDailyPatientsRows(sheet1Rows, contract)
+    ? validateClinicalDailyPatientRows(preparedSheet1)
     : { dailyPatients: [], invalidRows: [], skippedEmptyRows: 0 };
   const qaErrorsValidation = canValidateRows
-    ? validateQaErrorRows(sheet2Rows, auditType, contract)
-    : { qaErrors: [], invalidRows: [], skippedEmptyRows: 0 };
+    ? validateClinicalQaErrorRows(preparedSheet2)
+    : { invalidRows: [], qaErrors: [], skippedEmptyRows: 0 };
   const invalidRows = [
     ...structureErrors,
     ...dailyPatientsValidation.invalidRows,
     ...qaErrorsValidation.invalidRows,
   ];
-  const totalRows = Math.max(sheet1Rows.length - 1, 0) + Math.max(sheet2Rows.length - 1, 0);
-  const validRows =
-    dailyPatientsValidation.dailyPatients.length + qaErrorsValidation.qaErrors.length;
-  const skippedEmptyRows =
-    dailyPatientsValidation.skippedEmptyRows + qaErrorsValidation.skippedEmptyRows;
 
   return {
-    sheet1Rows,
-    sheet2Rows,
     dailyPatients: dailyPatientsValidation.dailyPatients,
-    qaErrors: qaErrorsValidation.qaErrors,
     invalidRows,
+    qaErrors: qaErrorsValidation.qaErrors,
+    sheet1Rows: preparedSheet1.rows,
+    sheet2Rows: preparedSheet2.rows,
     summary: {
-      totalRows,
-      validRows,
       invalidRows: invalidRows.length,
-      skippedEmptyRows,
+      skippedEmptyRows:
+        dailyPatientsValidation.skippedEmptyRows +
+        qaErrorsValidation.skippedEmptyRows,
+      totalRows:
+        Math.max(preparedSheet1.rows.length - 1, 0) +
+        Math.max(preparedSheet2.rows.length - 1, 0),
+      validRows:
+        dailyPatientsValidation.dailyPatients.length +
+        qaErrorsValidation.qaErrors.length,
     },
   };
+}
+
+export function validateQaWorkbook(
+  workbook: WorkBook,
+  auditType: AuditType,
+): WorkbookValidationResult {
+  const contract = getWorkbookContract(auditType);
+
+  if (auditType === "clinical") {
+    return validateClinicalWorkbook(workbook);
+  }
+
+  return validateSingleSheetWorkbook({
+    config: contract.sheet1,
+    parseRow:
+      auditType === "non_medical" ? parseNonMedicalRow : parseDoctorsRow,
+    workbook,
+  });
 }
