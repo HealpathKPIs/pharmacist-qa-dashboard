@@ -29,7 +29,7 @@ export type Database = {
       };
       daily_patients: {
         Row: {
-          audit_type: "clinical" | "non_medical";
+          audit_type: "clinical" | "non_medical" | "doctors";
           id: number;
           day: string;
           patient_count: number;
@@ -37,7 +37,7 @@ export type Database = {
           uploaded_at: string | null;
         };
         Insert: {
-          audit_type: "clinical" | "non_medical";
+          audit_type: "clinical" | "non_medical" | "doctors";
           id?: never;
           day: string;
           patient_count: number;
@@ -45,7 +45,7 @@ export type Database = {
           uploaded_at?: string | null;
         };
         Update: {
-          audit_type?: "clinical" | "non_medical";
+          audit_type?: "clinical" | "non_medical" | "doctors";
           id?: never;
           day?: string;
           patient_count?: number;
@@ -56,7 +56,7 @@ export type Database = {
       };
       qa_errors: {
         Row: {
-          audit_type: "clinical" | "non_medical";
+          audit_type: "clinical" | "non_medical" | "doctors";
           id: number;
           pharmacist_name: string;
           pharmacist_name_raw: string | null;
@@ -69,7 +69,7 @@ export type Database = {
           uploaded_at: string | null;
         };
         Insert: {
-          audit_type: "clinical" | "non_medical";
+          audit_type: "clinical" | "non_medical" | "doctors";
           id?: never;
           pharmacist_name: string;
           pharmacist_name_raw?: string | null;
@@ -82,7 +82,7 @@ export type Database = {
           uploaded_at?: string | null;
         };
         Update: {
-          audit_type?: "clinical" | "non_medical";
+          audit_type?: "clinical" | "non_medical" | "doctors";
           id?: never;
           pharmacist_name?: string;
           pharmacist_name_raw?: string | null;
@@ -98,7 +98,7 @@ export type Database = {
       };
       upload_batches: {
         Row: {
-          audit_type: "clinical" | "non_medical";
+          audit_type: "clinical" | "non_medical" | "doctors";
           id: number;
           file_name: string;
           source_file: string;
@@ -112,7 +112,7 @@ export type Database = {
           status: string | null;
         };
         Insert: {
-          audit_type: "clinical" | "non_medical";
+          audit_type: "clinical" | "non_medical" | "doctors";
           id?: never;
           file_name: string;
           source_file: string;
@@ -126,7 +126,7 @@ export type Database = {
           status?: string | null;
         };
         Update: {
-          audit_type?: "clinical" | "non_medical";
+          audit_type?: "clinical" | "non_medical" | "doctors";
           id?: never;
           file_name?: string;
           source_file?: string;

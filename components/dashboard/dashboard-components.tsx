@@ -94,7 +94,7 @@ export function DashboardShell({
           </span>
           {moduleConfig.moduleLabel}
         </Link>
-        <nav className="mt-6 grid grid-cols-2 gap-2" aria-label="QA products">
+        <nav className="mt-6 grid grid-cols-3 gap-2" aria-label="QA products">
           {Object.values(AUDIT_MODULES).map((item) => (
             <Link
               className={cn(

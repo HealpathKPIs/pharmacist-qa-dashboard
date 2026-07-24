@@ -1,4 +1,4 @@
-export const AUDIT_TYPES = ["clinical", "non_medical"] as const;
+export const AUDIT_TYPES = ["clinical", "non_medical", "doctors"] as const;
 
 export type AuditType = (typeof AUDIT_TYPES)[number];
 
@@ -31,6 +31,16 @@ export const AUDIT_MODULES: Record<AuditType, AuditModuleConfig> = {
     moduleLabel: "Non-Medical QA",
     actorLabel: "Agent",
     actorLabelPlural: "Agents",
+    workloadLabel: "Cases Reviewed",
+    workloadLabelLower: "cases reviewed",
+  },
+  doctors: {
+    auditType: "doctors",
+    basePath: "/doctors",
+    dashboardTitle: "Doctors QA Dashboard",
+    moduleLabel: "Doctors QA",
+    actorLabel: "Doctor",
+    actorLabelPlural: "Doctors",
     workloadLabel: "Cases Reviewed",
     workloadLabelLower: "cases reviewed",
   },

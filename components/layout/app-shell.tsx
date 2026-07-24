@@ -24,7 +24,11 @@ export function AppShell({
   const navigationItems = [
     { href: getAuditPath(auditType), label: "Dashboard", icon: LayoutDashboard },
     { href: getAuditPath(auditType, "/upload"), label: "Upload", icon: Upload },
-    { href: getAuditPath(auditType, "/uploads"), label: "History", icon: History },
+    {
+      href: getAuditPath(auditType, "/uploads"),
+      label: auditType === "doctors" ? "Upload History" : "History",
+      icon: History,
+    },
     { href: getAuditPath(auditType, "/settings"), label: "Settings", icon: Settings },
   ];
 

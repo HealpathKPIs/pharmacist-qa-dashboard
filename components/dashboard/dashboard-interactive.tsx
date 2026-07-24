@@ -1041,15 +1041,15 @@ export function DashboardInteractive({
       <section className="space-y-5">
         <SectionHeading
           eyebrow="Executive Dashboard"
-          subtitle={`Quality scoring uses severity score per ${auditType === "non_medical" ? "case" : "patient"}, with ${moduleConfig.actorLabel.toLowerCase()} ranking based on severity score rate.`}
+          subtitle={`Quality scoring uses severity score per ${auditType === "clinical" ? "patient" : "case"}, with ${moduleConfig.actorLabel.toLowerCase()} ranking based on severity score rate.`}
           title="Executive Summary"
         />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-          {auditType === "non_medical" ? (
+          {auditType !== "clinical" ? (
             <ExecutiveMetricCard
-              detail="Agents represented in QA error records"
+              detail={`${moduleConfig.actorLabelPlural} represented in QA error records`}
               icon={Users}
-              label="Total Agents"
+              label={`Total ${moduleConfig.actorLabelPlural}`}
               previous={previousTotals.totalPharmacists}
               value={totals.totalPharmacists}
             />
@@ -1080,7 +1080,7 @@ export function DashboardInteractive({
               />
             </>
           )}
-          {auditType === "non_medical" ? (
+          {auditType !== "clinical" ? (
             <>
               <ExecutiveMetricCard
                 detail="Cases reviewed in the selected date range"
@@ -1090,7 +1090,7 @@ export function DashboardInteractive({
                 value={totals.totalPatients}
               />
               <ExecutiveMetricCard
-                detail="Validated Non-Medical QA errors"
+                detail={`Validated ${moduleConfig.moduleLabel} errors`}
                 icon={CircleGauge}
                 label="QA Errors"
                 previous={previousTotals.totalQaErrors}

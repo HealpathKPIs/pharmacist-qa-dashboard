@@ -48,8 +48,10 @@ function isXlsxFile(file: File) {
   return file.name.toLowerCase().endsWith(".xlsx");
 }
 
-function isDayColumn(header: unknown) {
-  return String(header ?? "").trim().toLocaleUpperCase("en-US") === "DAY";
+function isDateColumn(header: unknown) {
+  return ["DAY", "ISSUE DATE", "CONSULTATION DATE"].includes(
+    String(header ?? "").trim().toLocaleUpperCase("en-US"),
+  );
 }
 
 function formatCellValue(value: unknown, options?: { dateColumn?: boolean }) {
@@ -115,7 +117,8 @@ function PreviewTable({
                     >
                       <span className="line-clamp-2 break-words">
                         {formatCellValue(row[columnIndex], {
-                          dateColumn: rowIndex > 0 && isDayColumn(headerRow[columnIndex]),
+                          dateColumn:
+                            rowIndex > 0 && isDateColumn(headerRow[columnIndex]),
                         })}
                       </span>
                     </td>
@@ -484,9 +487,9 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
       <CardHeader>
         <CardTitle className="text-white">{moduleConfig.moduleLabel} Excel Import</CardTitle>
         <CardDescription>
-          {auditType === "non_medical"
-            ? "Headers are read from row 1 of the first worksheet; data begins on row 2."
-            : `Use the ${moduleConfig.moduleLabel} template to preview and validate Sheet1 and Sheet2.`}
+          {auditType === "clinical"
+            ? `Use the ${moduleConfig.moduleLabel} template to preview and validate Sheet1 and Sheet2.`
+            : "Headers are read from row 1 of the first worksheet; data begins on row 2."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
