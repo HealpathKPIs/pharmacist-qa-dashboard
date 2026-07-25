@@ -1,7 +1,10 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { UploadDropzone } from "@/components/upload/upload-dropzone";
+import { requireAdmin } from "@/lib/auth-server";
 
-export default function DoctorsUploadPage() {
+export default async function DoctorsUploadPage() {
+  await requireAdmin();
+
   return (
     <AppShell auditType="doctors">
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">

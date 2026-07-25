@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { read } from "xlsx";
 
-import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
+import { getCurrentProfile } from "@/lib/auth-server";
 import { isAuditType } from "@/lib/audit-types";
 import { validateQaWorkbook } from "@/lib/excel-validation";
 import { importValidatedWorkbook } from "@/lib/upload-import";
@@ -14,13 +13,14 @@ function isXlsxFile(file: File) {
 }
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const isAuthenticated = await verifySessionToken(
-    cookieStore.get(AUTH_COOKIE_NAME)?.value,
-  );
+  const profile = await getCurrentProfile();
 
-  if (!isAuthenticated) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (!profile) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  if (!profile.active || profile.role !== "admin") {
+    return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   }
 
   const formData = await request.formData();

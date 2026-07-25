@@ -1,8 +1,11 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { DoctorsTemplateCard } from "@/components/settings/doctors-template-card";
 import { SettingsForms } from "@/components/settings/settings-forms";
+import { requireAdmin } from "@/lib/auth-server";
 
-export default function DoctorsSettingsPage() {
+export default async function DoctorsSettingsPage() {
+  await requireAdmin();
+
   return (
     <AppShell auditType="doctors">
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">

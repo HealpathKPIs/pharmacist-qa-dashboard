@@ -1,16 +1,11 @@
 import {
   Activity,
   AlertTriangle,
-  BarChart3,
   CircleGauge,
   ClipboardList,
-  History,
-  LayoutDashboard,
-  Settings,
   TrendingUp,
   Users,
 } from "lucide-react";
-import Link from "next/link";
 
 import {
   Card,
@@ -20,7 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -36,11 +30,10 @@ import type {
   ErrorsByPharmacist,
 } from "@/lib/dashboard-queries";
 import {
-  AUDIT_MODULES,
   getAuditModule,
-  getAuditPath,
   type AuditType,
 } from "@/lib/audit-types";
+import { PlatformShell } from "@/components/layout/platform-shell";
 import { cn } from "@/lib/utils";
 
 type KpiCardConfig = {
@@ -77,108 +70,7 @@ export function DashboardShell({
   auditType?: AuditType;
   children: React.ReactNode;
 }) {
-  const moduleConfig = getAuditModule(auditType);
-  const dashboardNavigationItems = [
-    { href: getAuditPath(auditType), label: "Dashboard", icon: BarChart3 },
-    { href: getAuditPath(auditType, "/upload"), label: "Upload", icon: ClipboardList },
-    { href: getAuditPath(auditType, "/uploads"), label: "Upload History", icon: History },
-    { href: getAuditPath(auditType, "/settings"), label: "Settings", icon: Settings },
-  ];
-
-  return (
-    <div className="min-h-screen bg-[#08090a] text-zinc-100">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-[#0b0d0f] px-4 py-5 lg:block">
-        <Link className="flex items-center gap-3 text-sm font-semibold text-white" href={getAuditPath(auditType)}>
-          <span className="flex h-9 w-9 items-center justify-center rounded-md border border-emerald-300/25 bg-emerald-300/10 text-emerald-200">
-            <LayoutDashboard aria-hidden="true" className="h-4 w-4" />
-          </span>
-          {moduleConfig.moduleLabel}
-        </Link>
-        <nav className="mt-6 grid grid-cols-3 gap-2" aria-label="QA products">
-          {Object.values(AUDIT_MODULES).map((item) => (
-            <Link
-              className={cn(
-                "rounded-md border border-white/10 px-2 py-2 text-center text-xs font-medium text-zinc-500 transition-colors hover:bg-white/10 hover:text-white",
-                item.auditType === auditType && "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
-              )}
-              href={getAuditPath(item.auditType)}
-              key={item.auditType}
-            >
-              {item.moduleLabel}
-            </Link>
-          ))}
-        </nav>
-        <nav className="mt-6 space-y-1" aria-label={`${moduleConfig.moduleLabel} navigation`}>
-          {dashboardNavigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.label === "Dashboard";
-
-            return (
-              <Link
-                className={cn(
-                  "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/10 hover:text-white",
-                  isActive && "bg-white/10 text-white",
-                )}
-                href={item.href}
-                key={item.href}
-              >
-                <Icon
-                  aria-hidden="true"
-                  className={cn("h-4 w-4", isActive && "text-emerald-300")}
-                />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-      <div className="border-b border-white/10 bg-[#0b0d0f] px-4 py-3 lg:hidden">
-        <div className="space-y-3">
-          <nav className="flex gap-2" aria-label="QA products">
-            {Object.values(AUDIT_MODULES).map((item) => (
-              <Link
-                className={cn(
-                  "rounded-md border border-white/10 px-2 py-1.5 text-xs font-medium text-zinc-500",
-                  item.auditType === auditType && "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
-                )}
-                href={getAuditPath(item.auditType)}
-                key={item.auditType}
-              >
-                {item.moduleLabel}
-              </Link>
-            ))}
-          </nav>
-          <nav
-            aria-label="Mobile navigation"
-            className="flex items-center gap-2 overflow-x-auto"
-          >
-            {dashboardNavigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.label === "Dashboard";
-
-              return (
-                <Link
-                  className={cn(
-                    "inline-flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/10 hover:text-white",
-                    isActive && "bg-white/10 text-white",
-                  )}
-                  href={item.href}
-                  key={item.href}
-                >
-                  <Icon
-                    aria-hidden="true"
-                    className={cn("h-4 w-4", isActive && "text-emerald-300")}
-                  />
-                  {item.label === "Upload History" ? "History" : item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
-      <div className="lg:pl-64">{children}</div>
-    </div>
-  );
+  return <PlatformShell auditType={auditType}>{children}</PlatformShell>;
 }
 
 export function DashboardHeader({
@@ -476,25 +368,16 @@ export function TopIssuesTable({ rows }: { rows: ErrorsByIssue[] }) {
   );
 }
 
-export function DashboardEmptyState({
-  auditType = "clinical",
-}: {
-  auditType?: AuditType;
-}) {
+export function DashboardEmptyState() {
   return (
     <Card className="border-dashed border-white/10 bg-white/[0.03] shadow-none">
       <CardContent className="flex flex-col items-center justify-center px-6 py-12 text-center">
         <TrendingUp aria-hidden="true" className="h-8 w-8 text-zinc-500" />
         <h2 className="mt-4 text-lg font-semibold text-white">No dashboard data yet</h2>
         <p className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
-          Import a validated workbook to populate KPIs, charts, and ranking tables.
+          No records match the current module and filters. An administrator can
+          import data when a new reporting period is available.
         </p>
-        <Link
-          className={cn(buttonVariants(), "mt-5")}
-          href={getAuditPath(auditType, "/upload")}
-        >
-          Go to Upload
-        </Link>
       </CardContent>
     </Card>
   );

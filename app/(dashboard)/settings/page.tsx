@@ -1,7 +1,10 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { SettingsForms } from "@/components/settings/settings-forms";
+import { requireAdmin } from "@/lib/auth-server";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  await requireAdmin();
+
   return (
     <AppShell>
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">

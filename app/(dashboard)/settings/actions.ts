@@ -1,17 +1,16 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { SettingsActionState } from "@/app/(dashboard)/settings/state";
-import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { LOGIN_PATH } from "@/lib/constants";
-import { updateAdminPassword } from "@/lib/password-auth";
+import { requireAdmin } from "@/lib/auth-server";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function changePassword(
   _previousState: SettingsActionState,
   formData: FormData,
 ): Promise<SettingsActionState> {
+  const profile = await requireAdmin();
   const currentPassword = formData.get("currentPassword");
   const newPassword = formData.get("newPassword");
   const confirmPassword = formData.get("confirmPassword");
@@ -41,11 +40,24 @@ export async function changePassword(
     };
   }
 
-  const result = await updateAdminPassword(currentPassword, newPassword);
+  const supabase = await createSupabaseServerClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: profile.email,
+    password: currentPassword,
+  });
 
-  if (!result.ok) {
+  if (signInError) {
     return {
-      message: result.error ?? "Password could not be updated.",
+      message: "The current password is incorrect.",
+      status: "error",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+  if (error) {
+    return {
+      message: error.message,
       status: "error",
     };
   }
@@ -57,8 +69,8 @@ export async function changePassword(
 }
 
 export async function logout() {
-  const cookieStore = await cookies();
+  const supabase = await createSupabaseServerClient();
 
-  cookieStore.delete(AUTH_COOKIE_NAME);
-  redirect(LOGIN_PATH);
+  await supabase.auth.signOut();
+  redirect("/login");
 }

@@ -21,6 +21,7 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const hasError = params.error === "invalid";
+  const isDisabled = params.error === "disabled";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
@@ -31,14 +32,28 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </CardHeader>
         <CardContent>
           <form action={login} className="space-y-4">
-            {hasError ? (
+            {hasError || isDisabled ? (
               <Alert variant="destructive">
                 <AlertCircle aria-hidden="true" className="h-4 w-4" />
                 <AlertDescription>
-                  The password you entered is incorrect.
+                  {isDisabled
+                    ? "This account is disabled or has no valid platform role."
+                    : "The email or password you entered is incorrect."}
                 </AlertDescription>
               </Alert>
             ) : null}
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="email">
+                Email
+              </label>
+              <Input
+                autoComplete="email"
+                id="email"
+                name="email"
+                required
+                type="email"
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium" htmlFor="password">
                 Password

@@ -27,6 +27,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          email: string;
+          full_name: string;
+          id: string;
+          role:
+            | "admin"
+            | "clinical_manager"
+            | "non_medical_manager"
+            | "doctors_manager";
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          email: string;
+          full_name: string;
+          id: string;
+          role:
+            | "admin"
+            | "clinical_manager"
+            | "non_medical_manager"
+            | "doctors_manager";
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          email?: string;
+          full_name?: string;
+          id?: string;
+          role?:
+            | "admin"
+            | "clinical_manager"
+            | "non_medical_manager"
+            | "doctors_manager";
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       daily_patients: {
         Row: {
           audit_type: "clinical" | "non_medical" | "doctors";

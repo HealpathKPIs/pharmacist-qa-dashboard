@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   CircleGauge,
   ClipboardList,
+  Download,
   Minus,
   Search,
   Star,
@@ -36,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -1036,9 +1038,48 @@ export function DashboardInteractive({
     );
   }
 
+  function exportReport() {
+    const headers = [
+      "Date",
+      moduleConfig.actorLabel,
+      auditType === "doctors" ? "Consultation ID" : "Patient ID",
+      "Issue",
+      "Score",
+      "Details",
+    ];
+    const csvRows = qaErrorDetails.map((row) =>
+      [
+        row.day,
+        row.pharmacistName,
+        row.patientId,
+        row.issueType,
+        row.score,
+        row.issueDetails ?? "",
+      ]
+        .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+        .join(","),
+    );
+    const blob = new Blob([[headers.join(","), ...csvRows].join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = `${auditType.replaceAll("_", "-")}-qa-report.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
       <section className="space-y-5">
+        <div className="flex justify-end">
+          <Button onClick={exportReport} type="button" variant="outline">
+            <Download aria-hidden="true" className="h-4 w-4" />
+            Export Report
+          </Button>
+        </div>
         <SectionHeading
           eyebrow="Executive Dashboard"
           subtitle={`Quality scoring uses severity score per ${auditType === "clinical" ? "patient" : "case"}, with ${moduleConfig.actorLabel.toLowerCase()} ranking based on severity score rate.`}

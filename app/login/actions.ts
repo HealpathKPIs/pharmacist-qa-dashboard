@@ -1,46 +1,38 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import {
-  AUTH_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-  createSessionToken,
-} from "@/lib/auth";
-import { DASHBOARD_PATH, LOGIN_PATH } from "@/lib/constants";
-import { verifyPassword } from "@/lib/password-auth";
-
-const INVALID_LOGIN_REDIRECT = `${LOGIN_PATH}?error=invalid`;
+import { getRoleHomePath, isAppRole } from "@/lib/rbac";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function login(formData: FormData) {
+  const email = formData.get("email");
   const password = formData.get("password");
 
-  if (typeof password !== "string") {
-    redirect(INVALID_LOGIN_REDIRECT);
+  if (typeof email !== "string" || typeof password !== "string") {
+    redirect("/login?error=invalid");
   }
 
-  const isValidPassword = await verifyPassword(password);
-
-  if (!isValidPassword) {
-    redirect(INVALID_LOGIN_REDIRECT);
-  }
-
-  const sessionToken = await createSessionToken();
-
-  if (!sessionToken) {
-    redirect(INVALID_LOGIN_REDIRECT);
-  }
-
-  const cookieStore = await cookies();
-
-  cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
-    httpOnly: true,
-    maxAge: SESSION_MAX_AGE_SECONDS,
-    path: "/",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password,
   });
 
-  redirect(DASHBOARD_PATH);
+  if (error || !data.user) {
+    redirect("/login?error=invalid");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("active, role")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  if (!profile || !profile.active || !isAppRole(profile.role)) {
+    await supabase.auth.signOut();
+    redirect("/login?error=disabled");
+  }
+
+  redirect(getRoleHomePath(profile.role));
 }

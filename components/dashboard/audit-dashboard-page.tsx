@@ -10,6 +10,7 @@ import {
 } from "@/components/dashboard/dashboard-filters";
 import { DashboardInteractive } from "@/components/dashboard/dashboard-interactive";
 import type { AuditType } from "@/lib/audit-types";
+import { requireModuleAccess } from "@/lib/auth-server";
 import { checkDatabaseHealth } from "@/lib/database-health";
 import {
   getDailyPatientDetails,
@@ -72,6 +73,7 @@ export async function AuditDashboardPage({
   auditType: AuditType;
   searchParams?: Promise<SearchParams>;
 }) {
+  await requireModuleAccess(auditType);
   const resolvedSearchParams = (await searchParams) ?? {};
   const filters = getFilters(resolvedSearchParams);
   const queryFilters = toQueryFilters(auditType, filters);
@@ -129,7 +131,7 @@ export async function AuditDashboardPage({
         </DashboardHeader>
         <main className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
           {!hasData ? (
-            <DashboardEmptyState auditType={auditType} />
+            <DashboardEmptyState />
           ) : (
             <DashboardInteractive
               auditType={auditType}

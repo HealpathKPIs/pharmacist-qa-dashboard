@@ -1,4 +1,23 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a Next.js QA platform backed by Supabase.
+
+## Authentication and RBAC
+
+Apply all migrations in `supabase/migrations`, then create the initial user in
+Supabase Auth. During migration, the oldest existing Supabase Auth user is
+assigned the `admin` role. If no Auth users existed when the migration ran,
+create one and set its `public.profiles.role` value to `admin` from the Supabase
+SQL editor before signing in.
+
+Required environment variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+The service-role key is server-only and is used exclusively by admin-guarded
+user management and existing import/query services.
 
 ## Getting Started
 

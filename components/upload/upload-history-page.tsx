@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
+import { requireAdmin } from "@/lib/auth-server";
 import { getUploadHistory } from "@/lib/upload-history";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ function statusClassName(status: string) {
 }
 
 export async function AuditUploadHistoryPage({ auditType }: { auditType: AuditType }) {
+  await requireAdmin();
   const moduleConfig = getAuditModule(auditType);
 
   try {
