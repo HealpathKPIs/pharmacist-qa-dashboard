@@ -2,11 +2,26 @@ This is a Next.js QA platform backed by Supabase.
 
 ## Authentication and RBAC
 
-Apply all migrations in `supabase/migrations`, then create the initial user in
-Supabase Auth. During migration, the oldest existing Supabase Auth user is
-assigned the `admin` role. If no Auth users existed when the migration ran,
-create one and set its `public.profiles.role` value to `admin` from the Supabase
-SQL editor before signing in.
+Apply all migrations in `supabase/migrations`. The RBAC migration creates only
+the application-side profiles schema, policies, constraints, and Auth profile
+trigger. It does not create or modify Supabase Auth users.
+
+After the migration succeeds, create the primary Admin through
+**Supabase Dashboard → Authentication → Users → Add user** or through
+`supabase.auth.admin.createUser()` using this exact email:
+
+```text
+ahmedramadan@healpath.care
+```
+
+The profile trigger recognizes this email, creates its active Admin profile,
+and grants all three QA modules. Every other Auth user is created as a disabled
+Manager with no modules until the primary Admin assigns access.
+
+Public sign-up is disabled in `supabase/config.toml`, and the application has no
+registration route or sign-up action. For a hosted Supabase project, keep
+**Authentication → Providers → Email → Allow new users to sign up** disabled
+when linking or deploying the project.
 
 Required environment variables:
 
@@ -14,10 +29,13 @@ Required environment variables:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+APP_PASSWORD=
 ```
 
 The service-role key is server-only and is used exclusively by admin-guarded
 user management and existing import/query services.
+Managers are read-only and can only open the QA modules listed in their
+`accessible_modules` profile field. Admin always receives all modules.
 
 ## Getting Started
 

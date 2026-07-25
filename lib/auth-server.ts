@@ -7,16 +7,20 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import {
   canAccessModule,
   isAppRole,
+  isPrimaryAdmin,
+  parseAccessibleModules,
   type AppRole,
   type UserProfile,
 } from "@/lib/rbac";
 
 type ProfileRow = {
+  accessible_modules: string[];
   active: boolean;
   created_at: string;
   email: string;
   full_name: string;
   id: string;
+  last_login: string | null;
   role: string;
   updated_at: string;
 };
@@ -27,11 +31,13 @@ function toUserProfile(row: ProfileRow): UserProfile | null {
   }
 
   return {
+    accessibleModules: parseAccessibleModules(row.accessible_modules),
     active: row.active,
     createdAt: row.created_at,
     email: row.email,
     fullName: row.full_name,
     id: row.id,
+    lastLogin: row.last_login,
     role: row.role,
     updatedAt: row.updated_at,
   };
@@ -49,7 +55,9 @@ export async function getCurrentProfile() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("active, created_at, email, full_name, id, role, updated_at")
+    .select(
+      "accessible_modules, active, created_at, email, full_name, id, last_login, role, updated_at",
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -88,10 +96,20 @@ export async function requireAdmin() {
   return requireRole("admin");
 }
 
+export async function requirePrimaryAdmin() {
+  const profile = await requireAdmin();
+
+  if (!isPrimaryAdmin(profile)) {
+    forbidden();
+  }
+
+  return profile;
+}
+
 export async function requireModuleAccess(auditType: AuditType) {
   const profile = await requireCurrentProfile();
 
-  if (!canAccessModule(profile.role, auditType)) {
+  if (!canAccessModule(profile, auditType)) {
     forbidden();
   }
 

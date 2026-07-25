@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { canAccessPath, getRoleHomePath, isAppRole } from "@/lib/rbac";
+import {
+  canAccessPath,
+  getProfileHomePath,
+  isAppRole,
+  parseAccessibleModules,
+} from "@/lib/rbac";
 import type { Database } from "@/types/database";
 
 const PUBLIC_PATHS = new Set(["/login"]);
@@ -73,26 +78,31 @@ export async function middleware(request: NextRequest) {
     return applyCookies(NextResponse.next(), cookiesToSet);
   }
 
-  const { data: profile } = await supabase
+  const { data: profileRow } = await supabase
     .from("profiles")
-    .select("active, role")
+    .select("accessible_modules, active, role")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile || !isAppRole(profile.role) || !profile.active) {
+  if (!profileRow || !isAppRole(profileRow.role) || !profileRow.active) {
     return applyCookies(accessDenied(request), cookiesToSet);
   }
+
+  const profile = {
+    accessibleModules: parseAccessibleModules(profileRow.accessible_modules),
+    role: profileRow.role,
+  };
 
   if (isPublicPath) {
     const homeUrl = request.nextUrl.clone();
 
-    homeUrl.pathname = getRoleHomePath(profile.role);
+    homeUrl.pathname = getProfileHomePath(profile);
     homeUrl.search = "";
 
     return applyCookies(NextResponse.redirect(homeUrl), cookiesToSet);
   }
 
-  if (!canAccessPath(profile.role, request.nextUrl.pathname)) {
+  if (!canAccessPath(profile, request.nextUrl.pathname)) {
     return applyCookies(accessDenied(request), cookiesToSet);
   }
 

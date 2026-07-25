@@ -20,9 +20,11 @@ import {
   type AuditType,
 } from "@/lib/audit-types";
 import {
-  getModuleLabelForRole,
+  getEffectiveModules,
+  getModuleLabels,
+  getProfileHomePath,
+  isPrimaryAdmin,
   ROLE_LABELS,
-  ROLE_MODULES,
   type UserProfile,
 } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
@@ -78,10 +80,9 @@ export function PlatformShellClient({
   profile: UserProfile;
 }) {
   const pathname = usePathname();
-  const managerModule = ROLE_MODULES[profile.role];
-  const visibleModules = managerModule
-    ? [AUDIT_MODULES[managerModule]]
-    : Object.values(AUDIT_MODULES);
+  const visibleModules = getEffectiveModules(profile).map(
+    (auditType) => AUDIT_MODULES[auditType],
+  );
   const primaryItems: NavigationItem[] =
     profile.role === "admin"
       ? [
@@ -91,9 +92,17 @@ export function PlatformShellClient({
             icon: ShieldCheck,
             label: module.moduleLabel,
           })),
-          { href: "/users", icon: Users, label: "Users" },
           { href: "/issue-dictionary", icon: BookOpen, label: "Issue Dictionary" },
           { href: "/settings", icon: Settings, label: "Settings" },
+          ...(isPrimaryAdmin(profile)
+            ? [
+                {
+                  href: "/settings/users",
+                  icon: Users,
+                  label: "Users Management",
+                },
+              ]
+            : []),
         ]
       : visibleModules.map((module) => ({
           href: getAuditPath(module.auditType),
@@ -121,7 +130,7 @@ export function PlatformShellClient({
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-white/10 bg-[#0b0d0f] px-4 py-5 lg:flex lg:flex-col">
         <Link
           className="flex items-center gap-3 text-sm font-semibold text-white"
-          href={profile.role === "admin" ? "/executive" : primaryItems[0].href}
+          href={getProfileHomePath(profile)}
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-md border border-emerald-300/25 bg-emerald-300/10 text-emerald-200">
             <ShieldCheck aria-hidden="true" className="h-4 w-4" />
@@ -153,7 +162,7 @@ export function PlatformShellClient({
             <p className="truncate text-sm font-medium text-white">{profile.fullName}</p>
             <p className="truncate text-xs text-zinc-500">{profile.email}</p>
             <p className="mt-1 text-xs text-emerald-300">
-              {ROLE_LABELS[profile.role]} · {getModuleLabelForRole(profile.role)}
+              {ROLE_LABELS[profile.role]} · {getModuleLabels(profile)}
             </p>
           </div>
           <form action={logout}>

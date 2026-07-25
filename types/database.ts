@@ -29,42 +29,36 @@ export type Database = {
       };
       profiles: {
         Row: {
+          accessible_modules: ("clinical" | "non_medical" | "doctors")[];
           active: boolean;
           created_at: string;
           email: string;
           full_name: string;
           id: string;
-          role:
-            | "admin"
-            | "clinical_manager"
-            | "non_medical_manager"
-            | "doctors_manager";
+          last_login: string | null;
+          role: "admin" | "manager";
           updated_at: string;
         };
         Insert: {
+          accessible_modules?: ("clinical" | "non_medical" | "doctors")[];
           active?: boolean;
           created_at?: string;
           email: string;
           full_name: string;
           id: string;
-          role:
-            | "admin"
-            | "clinical_manager"
-            | "non_medical_manager"
-            | "doctors_manager";
+          last_login?: string | null;
+          role: "admin" | "manager";
           updated_at?: string;
         };
         Update: {
+          accessible_modules?: ("clinical" | "non_medical" | "doctors")[];
           active?: boolean;
           created_at?: string;
           email?: string;
           full_name?: string;
           id?: string;
-          role?:
-            | "admin"
-            | "clinical_manager"
-            | "non_medical_manager"
-            | "doctors_manager";
+          last_login?: string | null;
+          role?: "admin" | "manager";
           updated_at?: string;
         };
         Relationships: [];
