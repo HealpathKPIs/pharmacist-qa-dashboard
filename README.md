@@ -11,7 +11,7 @@ After the migration succeeds, create the primary Admin through
 `supabase.auth.admin.createUser()` using this exact email:
 
 ```text
-ahmedramadan@healpath.care
+
 ```
 
 The profile trigger recognizes this email, creates its active Admin profile,
