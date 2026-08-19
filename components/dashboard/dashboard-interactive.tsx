@@ -927,6 +927,7 @@ export function DashboardInteractive({
   totals,
 }: DashboardInteractiveProps) {
   const moduleConfig = getAuditModule(auditType);
+  const dailyTrendShowsErrorCount = auditType !== "clinical";
   const [dialogState, setDialogState] = useState<DialogState>(null);
   const [selectedBar, setSelectedBar] = useState<SelectedBar>(null);
   const totalSeverityScore = useMemo(() => getTotalSeverityScore(qaErrorDetails), [qaErrorDetails]);
@@ -1295,7 +1296,9 @@ export function DashboardInteractive({
         <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none xl:col-span-2">
           <CardHeader>
             <CardTitle className="text-base text-white">Daily Trend</CardTitle>
-            <CardDescription>Error rate over time</CardDescription>
+            <CardDescription>
+              {dailyTrendShowsErrorCount ? "Total errors per day" : "Error rate over time"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {dailyTrend.length === 0 ? (
@@ -1311,7 +1314,14 @@ export function DashboardInteractive({
                     tickFormatter={(value: string) => formatDay(value).slice(0, 6)}
                     tickLine={false}
                   />
-                  <YAxis stroke="#71717a" tickFormatter={(value: number) => `${value}%`} tickLine={false} />
+                  <YAxis
+                    allowDecimals={!dailyTrendShowsErrorCount}
+                    stroke="#71717a"
+                    tickFormatter={(value: number) =>
+                      dailyTrendShowsErrorCount ? formatInteger(value) : `${value}%`
+                    }
+                    tickLine={false}
+                  />
                   <Tooltip
                     contentStyle={{
                       background: "#0b0d0f",
@@ -1321,21 +1331,24 @@ export function DashboardInteractive({
                     }}
                     formatter={(value, name) => {
                       const numericValue = Number(value ?? 0);
-                      const label = String(name);
 
                       return [
-                        label === "Error rate"
-                          ? formatPercent(numericValue)
-                          : formatInteger(numericValue),
-                        label,
+                        dailyTrendShowsErrorCount
+                          ? formatInteger(numericValue)
+                          : formatPercent(numericValue),
+                        dailyTrendShowsErrorCount ? "Total Errors" : String(name),
                       ];
                     }}
-                    labelFormatter={(value) => formatDay(String(value))}
+                    labelFormatter={(value) =>
+                      dailyTrendShowsErrorCount
+                        ? `Date: ${formatDay(String(value))}`
+                        : formatDay(String(value))
+                    }
                   />
                   <Line
-                    dataKey="errorRate"
+                    dataKey={dailyTrendShowsErrorCount ? "errorCount" : "errorRate"}
                     dot={{ fill: "#34d399", r: 3 }}
-                    name="Error rate"
+                    name={dailyTrendShowsErrorCount ? "Total Errors" : "Error rate"}
                     stroke="#34d399"
                     strokeWidth={3}
                     type="monotone"
