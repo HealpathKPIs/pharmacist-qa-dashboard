@@ -1,4 +1,4 @@
-import { Users } from "lucide-react";
+import { Pill, Users } from "lucide-react";
 import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -53,6 +53,26 @@ export default async function SettingsPage() {
               </CardContent>
             </Card>
           ) : null}
+          <Card className="border-white/10 bg-white/[0.04] shadow-none">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Pill aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+                Clinical Pharmacists
+              </CardTitle>
+              <CardDescription>
+                Add, rename, activate or deactivate Clinical pharmacists and manage their
+                spellings. Applies to Clinical QA only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                className={cn(buttonVariants(), "inline-flex")}
+                href="/settings/clinical-pharmacists"
+              >
+                Manage Clinical Pharmacists
+              </Link>
+            </CardContent>
+          </Card>
           <SettingsForms />
         </section>
       </main>

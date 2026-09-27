@@ -83,6 +83,9 @@ type DialogState =
   | null;
 
 type DashboardInteractiveProps = {
+  // Rendered right after the Executive Summary (Clinical: the monthly
+  // medication reconciliation section). It does not affect any calculation.
+  afterExecutiveSummary?: React.ReactNode;
   auditType: AuditType;
   dailyPatientDetails: DailyPatientDetail[];
   dailyTrend: DailyTrendPoint[];
@@ -861,7 +864,7 @@ function PatientRowsTable({
   );
 }
 
-function QaErrorRowsTable({
+export function QaErrorRowsTable({
   actorLabel = "Pharmacist",
   idLabel = "Patient ID",
   rows,
@@ -913,6 +916,7 @@ function QaErrorRowsTable({
 }
 
 export function DashboardInteractive({
+  afterExecutiveSummary,
   auditType,
   dailyPatientDetails,
   dailyTrend,
@@ -1178,6 +1182,8 @@ export function DashboardInteractive({
           <SystemStatusCard databaseHealthy={databaseHealthy} recentUpload={recentUpload} />
         </div>
       </section>
+
+      {afterExecutiveSummary}
 
       {auditType === "clinical" ? (
       <section className="space-y-4">

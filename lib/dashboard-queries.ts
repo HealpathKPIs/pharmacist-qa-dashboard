@@ -184,9 +184,50 @@ async function fetchDailyPatientRows(
   return data ?? [];
 }
 
+// Clinical QA only: rows are read through the Clinical pharmacist roster, so
+// only active roster pharmacists count, under their current display name.
+async function fetchClinicalQaErrorSummaryRows(
+  filters: DashboardDateRangeFilter,
+): Promise<QaErrorSummaryRow[]> {
+  const supabase = getSupabaseAdminClient();
+  let query = supabase
+    .from("clinical_qa_errors_resolved")
+    .select("day, pharmacist_name, issue_type, score")
+    .eq("pharmacist_active", true)
+    .order("day", { ascending: true });
+
+  if (filters.startDate) {
+    query = query.gte("day", toDatabaseDate(filters.startDate));
+  }
+
+  if (filters.endDate) {
+    query = query.lte("day", toDatabaseDate(filters.endDate));
+  }
+
+  if (filters.pharmacistName) {
+    query = query.eq("pharmacist_name", filters.pharmacistName);
+  }
+
+  if (filters.issueType) {
+    query = query.eq("issue_type", filters.issueType);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to fetch QA errors: ${error.message}`);
+  }
+
+  return data ?? [];
+}
+
 async function fetchQaErrorSummaryRows(
   filters: DashboardDateRangeFilter,
 ): Promise<QaErrorSummaryRow[]> {
+  if (filters.auditType === "clinical") {
+    return fetchClinicalQaErrorSummaryRows(filters);
+  }
+
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("qa_errors")
@@ -454,9 +495,73 @@ export async function getDailyPatientDetails(
   }));
 }
 
+// Clinical QA only: see fetchClinicalQaErrorSummaryRows.
+async function getClinicalQaErrorDetails(
+  filters: DashboardDateRangeFilter,
+): Promise<QaErrorDetail[]> {
+  const supabase = getSupabaseAdminClient();
+  let query = supabase
+    .from("clinical_qa_errors_resolved")
+    .select(
+      [
+        "id",
+        "day",
+        "pharmacist_name",
+        "pharmacist_name_raw",
+        "patient_id",
+        "issue_type",
+        "score",
+        "issue_details",
+        "source_file",
+        "uploaded_at",
+      ].join(","),
+    )
+    .eq("pharmacist_active", true)
+    .order("day", { ascending: true });
+
+  if (filters.startDate) {
+    query = query.gte("day", toDatabaseDate(filters.startDate));
+  }
+
+  if (filters.endDate) {
+    query = query.lte("day", toDatabaseDate(filters.endDate));
+  }
+
+  if (filters.pharmacistName) {
+    query = query.eq("pharmacist_name", filters.pharmacistName);
+  }
+
+  if (filters.issueType) {
+    query = query.eq("issue_type", filters.issueType);
+  }
+
+  const { data, error } = await query.returns<QaErrorDetailRow[]>();
+
+  if (error) {
+    throw new Error(`Failed to fetch QA error details: ${error.message}`);
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    day: row.day,
+    pharmacistName: row.pharmacist_name,
+    pharmacistNameRaw: row.pharmacist_name_raw,
+    patientId: row.patient_id,
+    issueType: row.issue_type,
+    score: row.score,
+    issueDetails: row.issue_details,
+    sourceFile: row.source_file,
+    uploadedAt: row.uploaded_at,
+  }));
+}
+
 export async function getQaErrorDetails(
   filters: DashboardDateRangeFilter,
 ): Promise<QaErrorDetail[]> {
+  if (filters.auditType === "clinical") {
+    return getClinicalQaErrorDetails(filters);
+  }
+
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("qa_errors")

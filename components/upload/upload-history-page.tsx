@@ -6,8 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import { requireAdmin } from "@/lib/auth-server";
-import { getUploadHistory } from "@/lib/upload-history";
+import { getUploadHistory, type UploadKind } from "@/lib/upload-history";
 import { cn } from "@/lib/utils";
+
+const UPLOAD_KIND_LABELS: Record<UploadKind, string> = {
+  qa_audit: "QA workbook",
+  reconciliation_workload: "Reconciliation",
+};
 
 function formatDateTime(value: string | null) {
   if (!value) return "Not recorded";
@@ -31,6 +36,8 @@ function statusClassName(status: string) {
 export async function AuditUploadHistoryPage({ auditType }: { auditType: AuditType }) {
   await requireAdmin();
   const moduleConfig = getAuditModule(auditType);
+  // Only Clinical QA has more than one upload type.
+  const showUploadKind = auditType === "clinical";
 
   try {
     const uploads = await getUploadHistory(auditType);
@@ -71,7 +78,7 @@ export async function AuditUploadHistoryPage({ auditType }: { auditType: AuditTy
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>File name</TableHead><TableHead>Upload date</TableHead><TableHead>Status</TableHead>
+                          <TableHead>File name</TableHead>{showUploadKind ? <TableHead>Type</TableHead> : null}<TableHead>Upload date</TableHead><TableHead>Status</TableHead>
                           <TableHead className="text-right">Inserted rows</TableHead><TableHead className="text-right">Failed rows</TableHead><TableHead className="text-right">Skipped rows</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -79,6 +86,7 @@ export async function AuditUploadHistoryPage({ auditType }: { auditType: AuditTy
                         {uploads.map((upload) => (
                           <TableRow key={upload.id}>
                             <TableCell className="min-w-56 font-medium text-zinc-200"><span className="line-clamp-2">{upload.fileName}</span></TableCell>
+                            {showUploadKind ? <TableCell className="whitespace-nowrap text-zinc-400">{UPLOAD_KIND_LABELS[upload.uploadKind]}</TableCell> : null}
                             <TableCell className="min-w-44 text-zinc-400">{formatDateTime(upload.uploadedAt)}</TableCell>
                             <TableCell><span className={cn("inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium capitalize", statusClassName(upload.status))}>{upload.status}</span></TableCell>
                             <TableCell className="text-right font-mono text-zinc-400">{formatInteger(upload.insertedRows)}</TableCell>

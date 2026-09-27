@@ -9,6 +9,7 @@ import {
   type DashboardFilterValues,
 } from "@/components/dashboard/dashboard-filters";
 import { DashboardInteractive } from "@/components/dashboard/dashboard-interactive";
+import { ReconciliationMonthlySection } from "@/components/dashboard/reconciliation-monthly-section";
 import type { AuditType } from "@/lib/audit-types";
 import { requireModuleAccess } from "@/lib/auth-server";
 import { checkDatabaseHealth } from "@/lib/database-health";
@@ -23,6 +24,7 @@ import {
   getSeverityDistribution,
   type DashboardDateRangeFilter,
 } from "@/lib/dashboard-queries";
+import { getReconciliationMonthly } from "@/lib/reconciliation-queries";
 import { getUploadHistory } from "@/lib/upload-history";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -78,6 +80,16 @@ export async function AuditDashboardPage({
   const filters = getFilters(resolvedSearchParams);
   const queryFilters = toQueryFilters(auditType, filters);
   const dateOnlyFilters = toDateOnlyFilters(auditType, filters);
+  // Clinical QA only. The monthly reconciliation section loads on its own and
+  // never fails the rest of the dashboard.
+  const reconciliationRequest =
+    auditType === "clinical"
+      ? getReconciliationMonthly({
+          endDate: filters.endDate || undefined,
+          pharmacistName: filters.pharmacistName || undefined,
+          startDate: filters.startDate || undefined,
+        })
+      : null;
 
   try {
     const previousPeriodFilters = await getPreviousPeriodFilters(queryFilters);
@@ -107,9 +119,17 @@ export async function AuditDashboardPage({
       getSeverityDistribution(queryFilters),
       getErrorsByPharmacist(dateOnlyFilters),
       getErrorsByIssue(dateOnlyFilters),
-      getUploadHistory(auditType, 1),
+      getUploadHistory(
+        auditType,
+        1,
+        // Recent Activity keeps showing QA workbook imports only.
+        auditType === "clinical" ? { uploadKind: "qa_audit" } : undefined,
+      ),
       checkDatabaseHealth(auditType),
     ]);
+    const reconciliationSection = reconciliationRequest ? (
+      <ReconciliationMonthlySection result={await reconciliationRequest} />
+    ) : null;
     const hasData =
       totals.totalPatients > 0 ||
       totals.totalQaErrors > 0 ||
@@ -131,9 +151,13 @@ export async function AuditDashboardPage({
         </DashboardHeader>
         <main className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
           {!hasData ? (
-            <DashboardEmptyState />
+            <>
+              <DashboardEmptyState />
+              {reconciliationSection}
+            </>
           ) : (
             <DashboardInteractive
+              afterExecutiveSummary={reconciliationSection}
               auditType={auditType}
               dailyPatientDetails={dailyPatientDetails}
               dailyTrend={dailyTrend}
@@ -152,6 +176,10 @@ export async function AuditDashboardPage({
       </DashboardShell>
     );
   } catch (error) {
+    const reconciliationSection = reconciliationRequest ? (
+      <ReconciliationMonthlySection result={await reconciliationRequest} />
+    ) : null;
+
     return (
       <DashboardShell auditType={auditType}>
         <DashboardHeader auditType={auditType}>
@@ -162,10 +190,11 @@ export async function AuditDashboardPage({
             pharmacistOptions={[]}
           />
         </DashboardHeader>
-        <main className="px-4 py-6 sm:px-6 lg:px-8">
+        <main className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
           <DashboardErrorState
             message={error instanceof Error ? error.message : "Unknown error."}
           />
+          {reconciliationSection}
         </main>
       </DashboardShell>
     );

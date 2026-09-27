@@ -153,7 +153,7 @@ type ParsedSingleSheetRow = {
   qaError?: QaErrorRecord;
 };
 
-function worksheetToRows(sheet: WorkSheet) {
+export function worksheetToRows(sheet: WorkSheet) {
   return utils.sheet_to_json<SheetRow>(sheet, {
     blankrows: true,
     defval: "",
@@ -161,7 +161,7 @@ function worksheetToRows(sheet: WorkSheet) {
   });
 }
 
-function isEmptyCell(value: unknown) {
+export function isEmptyCell(value: unknown) {
   return (
     value === null ||
     value === undefined ||
@@ -501,7 +501,7 @@ function parseNonMedicalRow(
   return parsedRow;
 }
 
-function parseInteger(
+export function parseInteger(
   value: unknown,
   label: string,
   options?: { maximum?: number; minimum?: number },

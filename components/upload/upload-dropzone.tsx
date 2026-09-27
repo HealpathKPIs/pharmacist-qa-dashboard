@@ -140,7 +140,11 @@ function PreviewTable({
   );
 }
 
-function ValidationSummary({ result }: { result: WorkbookValidationResult }) {
+function ValidationSummary({
+  result,
+}: {
+  result: Pick<WorkbookValidationResult, "summary">;
+}) {
   const summaryItems = [
     {
       label: "Total rows",
@@ -224,7 +228,11 @@ function CleanDatasetSummary({
   );
 }
 
-function InvalidRowsTable({ result }: { result: WorkbookValidationResult }) {
+function InvalidRowsTable({
+  result,
+}: {
+  result: Pick<WorkbookValidationResult, "invalidRows">;
+}) {
   if (result.invalidRows.length === 0) {
     return (
       <Alert className="border-emerald-300/25 bg-emerald-300/10 text-emerald-100">
@@ -269,7 +277,14 @@ function InvalidRowsTable({ result }: { result: WorkbookValidationResult }) {
   );
 }
 
-function UploadResultSummary({ result }: { result: ImportUploadResult }) {
+function UploadResultSummary({
+  result,
+}: {
+  result: Pick<
+    ImportUploadResult,
+    "errors" | "failed" | "skipped" | "status" | "successfullyInserted" | "totalProcessed"
+  >;
+}) {
   const summaryItems = [
     {
       label: "Total processed",
@@ -616,3 +631,11 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
     </Card>
   );
 }
+
+// Shared with the medication reconciliation tracker upload.
+export {
+  InvalidRowsTable,
+  PreviewTable,
+  UploadResultSummary,
+  ValidationSummary as UploadValidationSummary,
+};
