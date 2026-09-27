@@ -67,20 +67,19 @@ function SectionHeader({ lastTrackerUploadAt }: { lastTrackerUploadAt: string | 
   return (
     <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-normal text-emerald-300">
+        <p className="text-xs font-semibold uppercase tracking-normal text-brand">
           Clinical QA
         </p>
-        <h2 className="mt-1 text-xl font-semibold tracking-normal text-white">
+        <h2 className="mt-1 text-xl font-semibold tracking-normal text-fg-strong">
           Medication Reconciliation — Monthly
         </h2>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-fg-subtle">
           Last tracker upload: {formatDateTime(lastTrackerUploadAt)}
         </p>
       </div>
-      <p className="max-w-2xl text-sm leading-6 text-zinc-400">
+      <p className="max-w-2xl text-sm leading-6 text-fg-muted">
         Accuracy = (medications audited in the month − reconciliation errors in the month) ÷
-        medications audited × 100, from monthly totals. Whole calendar months; the Issue filter
-        does not apply.
+        medications audited × 100, from monthly totals. Whole calendar months.
       </p>
     </div>
   );
@@ -103,7 +102,7 @@ function Comparison({
 }) {
   if (current === null || previous === null) {
     return (
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-fg-subtle">
         {previousLabel}: {previous === null ? "—" : formatter(previous)}
       </p>
     );
@@ -115,17 +114,17 @@ function Comparison({
 
   return (
     <div className="flex items-center justify-between gap-3 text-xs">
-      <span className="text-zinc-500">
-        {previousLabel}: <span className="font-mono text-zinc-300">{formatter(previous)}</span>
+      <span className="text-fg-subtle">
+        {previousLabel}: <span className="font-mono text-fg-tertiary">{formatter(previous)}</span>
       </span>
       <span
         className={cn(
           "inline-flex items-center gap-1 rounded-md border px-2 py-1 font-mono",
           direction !== "flat" &&
             isBetter &&
-            "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
-          direction !== "flat" && !isBetter && "border-red-300/25 bg-red-300/10 text-red-200",
-          direction === "flat" && "border-white/10 bg-white/[0.04] text-zinc-400",
+            "border-brand/25 bg-brand/10 text-brand-strong",
+          direction !== "flat" && !isBetter && "border-danger/25 bg-danger/10 text-danger-strong",
+          direction === "flat" && "border-tint/10 bg-tint/[0.04] text-fg-muted",
         )}
       >
         {direction === "up" ? <ArrowUp aria-hidden="true" className="h-3 w-3" /> : null}
@@ -160,23 +159,23 @@ function MonthlyMetricCard({
   previousLabel: string;
 }) {
   return (
-    <Card className="animate-soft-in h-full min-h-[168px] border-white/10 bg-gradient-to-br from-white/[0.075] to-white/[0.035] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+    <Card className="animate-soft-in h-full min-h-[168px] border-tint/10 bg-transparent bg-gradient-to-br from-surface-from to-surface-to shadow-(--shadow-card-lg)">
       <CardContent className="flex h-full flex-col justify-between gap-4 p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-normal text-fg-subtle">
               {label}
             </p>
-            <p className="mt-1 text-xs text-zinc-500">{monthLabel}</p>
-            <p className="mt-3 truncate font-mono text-3xl font-semibold leading-none text-white">
+            <p className="mt-1 text-xs text-fg-subtle">{monthLabel}</p>
+            <p className="mt-3 truncate font-mono text-3xl font-semibold leading-none text-fg-strong">
               {current === null ? "—" : formatter(current)}
             </p>
           </div>
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand/10 text-brand">
             <Icon aria-hidden="true" className="h-5 w-5" />
           </span>
         </div>
-        <div className="border-t border-white/10 pt-3">
+        <div className="border-t border-tint/10 pt-3">
           <Comparison
             current={current}
             differenceFormatter={differenceFormatter ?? formatter}
@@ -193,7 +192,7 @@ function MonthlyMetricCard({
 
 function FiguresText({ figures }: { figures: ReconciliationFigures }) {
   return (
-    <span className="mt-1 block font-mono text-xs text-zinc-500">
+    <span className="mt-1 block font-mono text-xs text-fg-subtle">
       {formatInteger(figures.audited)} / {formatInteger(figures.errors)}
     </span>
   );
@@ -207,7 +206,7 @@ function MonthCell({
   onSelect: () => void;
 }) {
   if (!cell || (!cell.hasTrackerData && cell.errors === 0)) {
-    return <span className="text-zinc-600">—</span>;
+    return <span className="text-fg-faint">—</span>;
   }
 
   const content = cell.hasTrackerData ? (
@@ -215,20 +214,20 @@ function MonthCell({
       <span
         className={cn(
           "block font-mono text-sm font-semibold",
-          cell.errorsExceedAudited ? "text-amber-200" : "text-zinc-100",
+          cell.errorsExceedAudited ? "text-warning-strong" : "text-foreground",
         )}
       >
         {formatAccuracy(cell.accuracy)}
       </span>
       <FiguresText figures={cell} />
       {cell.errorsExceedAudited ? (
-        <span className="mt-1 block text-xs text-amber-200">Errors exceed audited</span>
+        <span className="mt-1 block text-xs text-warning-strong">Errors exceed audited</span>
       ) : null}
     </>
   ) : (
     <>
-      <span className="block text-xs font-medium text-zinc-400">No tracker data</span>
-      <span className="mt-1 block font-mono text-xs text-zinc-500">
+      <span className="block text-xs font-medium text-fg-muted">No tracker data</span>
+      <span className="mt-1 block font-mono text-xs text-fg-subtle">
         {formatInteger(cell.errors)} errors
       </span>
     </>
@@ -241,8 +240,8 @@ function MonthCell({
   return (
     <button
       className={cn(
-        "w-full rounded-md border px-2 py-1.5 text-left transition-colors hover:border-emerald-300/30 hover:bg-white/[0.04]",
-        cell.errorsExceedAudited ? "border-amber-300/30" : "border-transparent",
+        "w-full rounded-md border px-2 py-1.5 text-left transition-colors hover:border-brand/30 hover:bg-tint/[0.04]",
+        cell.errorsExceedAudited ? "border-warning/30" : "border-transparent",
       )}
       onClick={onSelect}
       type="button"
@@ -281,12 +280,12 @@ export function ReconciliationMonthlySection({
     return (
       <section className="space-y-4">
         <SectionHeader lastTrackerUploadAt={data.lastTrackerUploadAt} />
-        <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/20 px-6 text-center">
-          <Pill aria-hidden="true" className="h-7 w-7 text-zinc-500" />
-          <p className="mt-3 text-sm font-medium text-white">
+        <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-tint/10 bg-inset px-6 text-center">
+          <Pill aria-hidden="true" className="h-7 w-7 text-fg-subtle" />
+          <p className="mt-3 text-sm font-medium text-fg-strong">
             No reconciliation workload uploaded for these months.
           </p>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-fg-subtle">
             Upload the medication reconciliation tracker on the Upload page.
           </p>
         </div>
@@ -353,13 +352,13 @@ export function ReconciliationMonthlySection({
         />
       </div>
       {latestMonth.excludedErrors > 0 ? (
-        <p className="rounded-md border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2 text-sm text-amber-100">
+        <p className="rounded-md border border-warning/20 bg-warning/[0.06] px-3 py-2 text-sm text-warning-foreground">
           {formatInteger(latestMonth.excludedErrors)} reconciliation error(s) in{" "}
           {formatMonthLabel(latestMonth.month)} belong to pharmacists with no tracker numbers
           that month and are not included in the team total.
         </p>
       ) : null}
-      <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+      <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -376,7 +375,7 @@ export function ReconciliationMonthlySection({
               <TableBody>
                 {data.pharmacists.map((pharmacist) => (
                   <TableRow key={pharmacist}>
-                    <TableCell className="whitespace-nowrap font-medium text-zinc-200">
+                    <TableCell className="whitespace-nowrap font-medium text-fg-secondary">
                       {pharmacist}
                     </TableCell>
                     {data.months.map((month) => (
@@ -391,18 +390,18 @@ export function ReconciliationMonthlySection({
                     ))}
                   </TableRow>
                 ))}
-                <TableRow className="bg-white/[0.03]">
-                  <TableCell className="whitespace-nowrap font-semibold text-white">
+                <TableRow className="bg-tint/[0.03]">
+                  <TableCell className="whitespace-nowrap font-semibold text-fg-strong">
                     Team total
                   </TableCell>
                   {data.months.map((month) => (
                     <TableCell className="align-top" key={month.month}>
-                      <span className="block font-mono text-sm font-semibold text-white">
+                      <span className="block font-mono text-sm font-semibold text-fg-strong">
                         {formatAccuracy(month.team.accuracy)}
                       </span>
                       <FiguresText figures={month.team} />
                       {month.excludedErrors > 0 ? (
-                        <span className="mt-1 block text-xs text-amber-200">
+                        <span className="mt-1 block text-xs text-warning-strong">
                           {formatInteger(month.excludedErrors)} excluded
                         </span>
                       ) : null}
@@ -412,7 +411,7 @@ export function ReconciliationMonthlySection({
               </TableBody>
             </Table>
           </div>
-          <p className="border-t border-white/10 px-4 py-3 text-xs text-zinc-500">
+          <p className="border-t border-tint/10 px-4 py-3 text-xs text-fg-subtle">
             Each cell shows accuracy, then medications audited / reconciliation errors. Click a
             cell with errors to see the error rows.
           </p>

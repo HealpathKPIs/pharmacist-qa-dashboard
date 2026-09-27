@@ -12,7 +12,7 @@ export default function UploadHistoryLoading() {
             <Skeleton className="h-9 w-64" />
             <Skeleton className="h-5 w-full max-w-lg" />
           </div>
-          <Card className="border-white/10 bg-white/[0.04] shadow-none">
+          <Card className="border-tint/10 bg-surface shadow-none">
             <CardHeader className="space-y-3">
               <Skeleton className="h-6 w-48" />
               <Skeleton className="h-4 w-64" />

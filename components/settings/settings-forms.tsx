@@ -40,10 +40,10 @@ export function SettingsForms() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+      <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <KeyRound aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+          <CardTitle className="flex items-center gap-2 text-fg-strong">
+            <KeyRound aria-hidden="true" className="h-5 w-5 text-brand" />
             Change Password
           </CardTitle>
           <CardDescription>
@@ -55,14 +55,14 @@ export function SettingsForms() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <label
-                  className="text-sm font-medium text-zinc-200"
+                  className="text-sm font-medium text-fg-secondary"
                   htmlFor="currentPassword"
                 >
                   Current password
                 </label>
                 <Input
                   autoComplete="current-password"
-                  className="border-white/10 bg-black/20 text-white"
+                  className="border-field-line bg-field-soft text-fg-strong"
                   id="currentPassword"
                   name="currentPassword"
                   required
@@ -71,14 +71,14 @@ export function SettingsForms() {
               </div>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-zinc-200"
+                  className="text-sm font-medium text-fg-secondary"
                   htmlFor="newPassword"
                 >
                   New password
                 </label>
                 <Input
                   autoComplete="new-password"
-                  className="border-white/10 bg-black/20 text-white"
+                  className="border-field-line bg-field-soft text-fg-strong"
                   id="newPassword"
                   minLength={8}
                   name="newPassword"
@@ -88,14 +88,14 @@ export function SettingsForms() {
               </div>
               <div className="space-y-2">
                 <label
-                  className="text-sm font-medium text-zinc-200"
+                  className="text-sm font-medium text-fg-secondary"
                   htmlFor="confirmPassword"
                 >
                   Confirm password
                 </label>
                 <Input
                   autoComplete="new-password"
-                  className="border-white/10 bg-black/20 text-white"
+                  className="border-field-line bg-field-soft text-fg-strong"
                   id="confirmPassword"
                   minLength={8}
                   name="confirmPassword"
@@ -112,10 +112,10 @@ export function SettingsForms() {
         </CardContent>
       </Card>
 
-      <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+      <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <LogOut aria-hidden="true" className="h-5 w-5 text-zinc-300" />
+          <CardTitle className="flex items-center gap-2 text-fg-strong">
+            <LogOut aria-hidden="true" className="h-5 w-5 text-fg-tertiary" />
             Session
           </CardTitle>
           <CardDescription>End the current dashboard session.</CardDescription>
@@ -123,7 +123,7 @@ export function SettingsForms() {
         <CardContent>
           <form action={logout}>
             <Button
-              className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10"
+              className="w-full border-tint/15 bg-tint/5 text-fg-strong hover:bg-tint/10"
               type="submit"
               variant="outline"
             >

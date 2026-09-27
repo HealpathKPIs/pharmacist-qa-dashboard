@@ -37,7 +37,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        "fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-scrim backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className,
       )}
       data-slot="dialog-overlay"
@@ -59,7 +59,7 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid max-h-[86vh] w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 gap-4 overflow-hidden rounded-lg border border-white/10 bg-[#0b0d0f] p-6 text-zinc-100 shadow-2xl shadow-black/40 outline-none data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "fixed left-1/2 top-1/2 z-50 grid max-h-[86vh] w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 gap-4 overflow-hidden rounded-lg border border-tint/10 bg-panel p-6 text-foreground shadow-2xl shadow-black/15 dark:shadow-black/40 outline-none data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
         )}
         data-slot="dialog-content"
@@ -68,7 +68,7 @@ function DialogContent({
         {children}
         {showCloseButton ? (
           <DialogPrimitive.Close
-            className="absolute right-4 top-4 rounded-md p-1 text-zinc-500 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-300"
+            className="absolute right-4 top-4 rounded-md p-1 text-fg-subtle transition-colors hover:bg-tint/10 hover:text-fg-strong focus:outline-none focus:ring-2 focus:ring-brand"
             data-slot="dialog-close"
           >
             <X aria-hidden="true" className="h-4 w-4" />
@@ -96,7 +96,7 @@ function DialogTitle({
 }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn("text-lg font-semibold text-white", className)}
+      className={cn("text-lg font-semibold text-fg-strong", className)}
       data-slot="dialog-title"
       {...props}
     />
@@ -109,7 +109,7 @@ function DialogDescription({
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
-      className={cn("text-sm text-zinc-400", className)}
+      className={cn("text-sm text-fg-muted", className)}
       data-slot="dialog-description"
       {...props}
     />

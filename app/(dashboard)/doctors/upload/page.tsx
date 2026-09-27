@@ -10,10 +10,10 @@ export default async function DoctorsUploadPage() {
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <section className="space-y-6">
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-normal text-white">
+            <h1 className="text-3xl font-semibold tracking-normal text-fg-strong">
               Doctors QA Upload
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-zinc-400">
+            <p className="max-w-2xl text-sm leading-6 text-fg-muted">
               Validate and import the official eight-column Doctors QA workbook.
             </p>
           </div>

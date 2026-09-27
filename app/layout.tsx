@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -20,18 +23,24 @@ export const metadata: Metadata = {
   description: "Pharmacist QA Dashboard",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Rendered on the server from the cookie, so the first paint already uses
+  // the chosen theme (no flash of the other theme).
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full ${theme}`}
     >
       <body className="min-h-full antialiased">
-        <ToastProvider>{children}</ToastProvider>
+        <ThemeProvider initialTheme={theme}>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

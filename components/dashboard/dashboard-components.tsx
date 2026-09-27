@@ -76,23 +76,30 @@ export function DashboardShell({
 export function DashboardHeader({
   auditType = "clinical",
   children,
+  description,
+  eyebrow = "QA Operations",
+  title,
 }: {
   auditType?: AuditType;
   children: React.ReactNode;
+  description?: string;
+  eyebrow?: string;
+  title?: string;
 }) {
   const moduleConfig = getAuditModule(auditType);
 
   return (
-    <header className="sticky top-0 z-10 border-b border-white/10 bg-[#0b0d0f]/95 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-tint/10 bg-panel/95 backdrop-blur">
       <div className="space-y-5 px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm text-emerald-300">QA Operations</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-white">
-              {moduleConfig.dashboardTitle}
+            <p className="text-sm text-brand">{eyebrow}</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-fg-strong">
+              {title ?? moduleConfig.dashboardTitle}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-              Monitor {moduleConfig.workloadLabelLower}, QA errors, {moduleConfig.actorLabel.toLowerCase()} performance, and issue mix.
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-muted">
+              {description ??
+                `Monitor ${moduleConfig.workloadLabelLower}, QA errors, ${moduleConfig.actorLabel.toLowerCase()} performance, and issue mix.`}
             </p>
           </div>
         </div>
@@ -137,21 +144,21 @@ export function KpiCards({ totals }: { totals: DashboardTotals }) {
 
         return (
           <Card
-            className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none transition-transform duration-200 hover:-translate-y-0.5"
+            className="animate-soft-in border-tint/10 bg-surface shadow-none transition-transform duration-200 hover:-translate-y-0.5"
             key={card.label}
           >
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+                  <p className="text-xs font-medium uppercase tracking-normal text-fg-subtle">
                     {card.label}
                   </p>
-                  <p className="mt-3 font-mono text-3xl font-semibold text-white">
+                  <p className="mt-3 font-mono text-3xl font-semibold text-fg-strong">
                     {card.value}
                   </p>
-                  <p className="mt-2 text-sm text-zinc-400">{card.detail}</p>
+                  <p className="mt-2 text-sm text-fg-muted">{card.detail}</p>
                 </div>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-brand/20 bg-brand/10 text-brand">
                   <Icon aria-hidden="true" className="h-5 w-5" />
                 </span>
               </div>
@@ -185,9 +192,9 @@ export function DailyTrendChart({ data }: { data: DailyTrendPoint[] }) {
     .join(" ");
 
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none xl:col-span-2">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none xl:col-span-2">
       <CardHeader>
-        <CardTitle className="text-base text-white">Daily Trend</CardTitle>
+        <CardTitle className="text-base text-fg-strong">Daily Trend</CardTitle>
         <CardDescription>Error rate over time</CardDescription>
       </CardHeader>
       <CardContent>
@@ -202,7 +209,7 @@ export function DailyTrendChart({ data }: { data: DailyTrendPoint[] }) {
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             >
               <line
-                stroke="rgba(255,255,255,0.10)"
+                stroke="var(--chart-grid)"
                 x1={padding}
                 x2={chartWidth - padding}
                 y1={chartHeight - padding}
@@ -211,15 +218,15 @@ export function DailyTrendChart({ data }: { data: DailyTrendPoint[] }) {
               <path
                 d={path}
                 fill="none"
-                stroke="#34d399"
+                stroke="var(--chart-1)"
                 strokeLinecap="round"
                 strokeWidth="3"
               />
               {points.map((point) => (
                 <g key={point.day}>
-                  <circle cx={point.x} cy={point.y} fill="#34d399" r="4" />
+                  <circle cx={point.x} cy={point.y} fill="var(--chart-1)" r="4" />
                   <text
-                    fill="#a1a1aa"
+                    fill="var(--chart-label)"
                     fontSize="11"
                     textAnchor="middle"
                     x={point.x}
@@ -251,9 +258,9 @@ export function HorizontalBarChart({
   const maxValue = getChartMax(data.map((item) => item.value));
 
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardHeader>
-        <CardTitle className="text-base text-white">{title}</CardTitle>
+        <CardTitle className="text-base text-fg-strong">{title}</CardTitle>
         <CardDescription>{labelKey}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -264,12 +271,12 @@ export function HorizontalBarChart({
             {data.slice(0, 8).map((item) => (
               <div className="space-y-2" key={item.label}>
                 <div className="flex items-center justify-between gap-4 text-sm">
-                  <span className="truncate text-zinc-300">{item.label}</span>
-                  <span className="font-mono text-zinc-500">{item.value}</span>
+                  <span className="truncate text-fg-tertiary">{item.label}</span>
+                  <span className="font-mono text-fg-subtle">{item.value}</span>
                 </div>
-                <div className="h-2 rounded-full bg-white/10">
+                <div className="h-2 rounded-full bg-tint/10">
                   <div
-                    className="h-2 rounded-full bg-emerald-300 transition-[width] duration-500"
+                    className="h-2 rounded-full bg-brand transition-[width] duration-500"
                     style={{ width: `${Math.max(4, (item.value / maxValue) * 100)}%` }}
                   />
                 </div>
@@ -290,9 +297,9 @@ export function TopPharmacistsTable({
   totalErrors: number;
 }) {
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardHeader>
-        <CardTitle className="text-base text-white">Top Pharmacists</CardTitle>
+        <CardTitle className="text-base text-fg-strong">Top Pharmacists</CardTitle>
         <CardDescription>Share of filtered QA errors</CardDescription>
       </CardHeader>
       <CardContent>
@@ -310,13 +317,13 @@ export function TopPharmacistsTable({
             <TableBody>
               {rows.slice(0, 8).map((row) => (
                 <TableRow key={row.pharmacistName}>
-                  <TableCell className="font-medium text-zinc-200">
+                  <TableCell className="font-medium text-fg-secondary">
                     {row.pharmacistName}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-zinc-400">
+                  <TableCell className="text-right font-mono text-fg-muted">
                     {row.errorCount}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-zinc-400">
+                  <TableCell className="text-right font-mono text-fg-muted">
                     {formatPercent(
                       totalErrors === 0 ? 0 : (row.errorCount / totalErrors) * 100,
                     )}
@@ -333,9 +340,9 @@ export function TopPharmacistsTable({
 
 export function TopIssuesTable({ rows }: { rows: ErrorsByIssue[] }) {
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardHeader>
-        <CardTitle className="text-base text-white">Top Issues</CardTitle>
+        <CardTitle className="text-base text-fg-strong">Top Issues</CardTitle>
         <CardDescription>Most frequent issue labels</CardDescription>
       </CardHeader>
       <CardContent>
@@ -352,10 +359,10 @@ export function TopIssuesTable({ rows }: { rows: ErrorsByIssue[] }) {
             <TableBody>
               {rows.slice(0, 8).map((row) => (
                 <TableRow key={row.issueType}>
-                  <TableCell className="font-medium text-zinc-200">
+                  <TableCell className="font-medium text-fg-secondary">
                     {row.issueType}
                   </TableCell>
-                  <TableCell className="text-right font-mono text-zinc-400">
+                  <TableCell className="text-right font-mono text-fg-muted">
                     {row.errorCount}
                   </TableCell>
                 </TableRow>
@@ -370,11 +377,11 @@ export function TopIssuesTable({ rows }: { rows: ErrorsByIssue[] }) {
 
 export function DashboardEmptyState() {
   return (
-    <Card className="border-dashed border-white/10 bg-white/[0.03] shadow-none">
+    <Card className="border-dashed border-tint/10 bg-surface dark:bg-white/[0.03] shadow-none">
       <CardContent className="flex flex-col items-center justify-center px-6 py-12 text-center">
-        <TrendingUp aria-hidden="true" className="h-8 w-8 text-zinc-500" />
-        <h2 className="mt-4 text-lg font-semibold text-white">No dashboard data yet</h2>
-        <p className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
+        <TrendingUp aria-hidden="true" className="h-8 w-8 text-fg-subtle" />
+        <h2 className="mt-4 text-lg font-semibold text-fg-strong">No dashboard data yet</h2>
+        <p className="mt-2 max-w-md text-sm leading-6 text-fg-muted">
           No records match the current module and filters. An administrator can
           import data when a new reporting period is available.
         </p>
@@ -385,8 +392,8 @@ export function DashboardEmptyState() {
 
 export function DashboardErrorState({ message }: { message: string }) {
   return (
-    <Alert className="border-red-300/25 bg-red-300/10 text-red-100">
-      <AlertTriangle aria-hidden="true" className="h-4 w-4 text-red-300" />
+    <Alert className="border-danger/25 bg-danger/10 text-danger-foreground">
+      <AlertTriangle aria-hidden="true" className="h-4 w-4 text-danger" />
       <AlertDescription>
         Dashboard data could not be loaded. {message}
       </AlertDescription>
@@ -398,7 +405,7 @@ function ChartEmptyState({ label }: { label: string }) {
   return (
     <div
       className={cn(
-        "flex min-h-48 items-center justify-center rounded-md border border-dashed border-white/10 px-4 text-center text-sm text-zinc-500",
+        "flex min-h-48 items-center justify-center rounded-md border border-dashed border-tint/10 px-4 text-center text-sm text-fg-subtle",
       )}
     >
       {label}

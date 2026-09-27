@@ -42,19 +42,19 @@ export default async function IssueDictionaryPage() {
     <PlatformShell>
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-2">
-          <p className="text-sm text-emerald-300">Administration</p>
-          <h1 className="text-3xl font-semibold tracking-normal text-white">
+          <p className="text-sm text-brand">Administration</p>
+          <h1 className="text-3xl font-semibold tracking-normal text-fg-strong">
             Issue Dictionary
           </h1>
-          <p className="max-w-2xl text-sm leading-6 text-zinc-400">
+          <p className="max-w-2xl text-sm leading-6 text-fg-muted">
             Issue names currently represented in imported QA records.
           </p>
         </div>
 
-        <Card className="border-white/10 bg-white/[0.04] shadow-none">
+        <Card className="border-tint/10 bg-surface shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <BookOpen aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+            <CardTitle className="flex items-center gap-2 text-fg-strong">
+              <BookOpen aria-hidden="true" className="h-5 w-5 text-brand" />
               Registered issues
             </CardTitle>
             <CardDescription>
@@ -62,7 +62,7 @@ export default async function IssueDictionaryPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-md border border-white/10">
+            <div className="overflow-x-auto rounded-md border border-tint/10">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -74,11 +74,11 @@ export default async function IssueDictionaryPage() {
                 <TableBody>
                   {issues.map((issue) => (
                     <TableRow key={`${issue.module}-${issue.issue}`}>
-                      <TableCell className="font-medium text-zinc-200">
+                      <TableCell className="font-medium text-fg-secondary">
                         {issue.issue}
                       </TableCell>
-                      <TableCell className="text-zinc-400">{issue.module}</TableCell>
-                      <TableCell className="text-right font-mono text-zinc-400">
+                      <TableCell className="text-fg-muted">{issue.module}</TableCell>
+                      <TableCell className="text-right font-mono text-fg-muted">
                         {issue.count}
                       </TableCell>
                     </TableRow>

@@ -21,11 +21,14 @@ export function DashboardFilters({
   filters,
   issueOptions,
   pharmacistOptions,
+  showIssueFilter = true,
 }: {
   auditType: AuditType;
   filters: DashboardFilterValues;
   issueOptions: string[];
   pharmacistOptions: string[];
+  // The Clinical KPI page hides it: no KPI there is filtered by issue.
+  showIssueFilter?: boolean;
 }) {
   const moduleConfig = getAuditModule(auditType);
   const pathname = usePathname();
@@ -54,35 +57,42 @@ export function DashboardFilters({
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+    <div
+      className={cn(
+        "grid gap-3",
+        showIssueFilter
+          ? "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
+          : "lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]",
+      )}
+    >
       <label className="space-y-1.5">
-        <span className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+        <span className="text-xs font-medium uppercase tracking-normal text-fg-subtle">
           Start Date
         </span>
         <Input
-          className="border-white/10 bg-black/30 text-white"
+          className="border-field-line bg-field text-fg-strong"
           onChange={(event) => updateFilter("startDate", event.target.value)}
           type="date"
           value={filters.startDate}
         />
       </label>
       <label className="space-y-1.5">
-        <span className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+        <span className="text-xs font-medium uppercase tracking-normal text-fg-subtle">
           End Date
         </span>
         <Input
-          className="border-white/10 bg-black/30 text-white"
+          className="border-field-line bg-field text-fg-strong"
           onChange={(event) => updateFilter("endDate", event.target.value)}
           type="date"
           value={filters.endDate}
         />
       </label>
       <label className="space-y-1.5">
-        <span className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+        <span className="text-xs font-medium uppercase tracking-normal text-fg-subtle">
           {moduleConfig.actorLabel}
         </span>
         <select
-          className="flex h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="flex h-10 w-full rounded-md border border-field-line bg-field px-3 py-2 text-sm text-fg-strong outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           onChange={(event) => updateFilter("pharmacistName", event.target.value)}
           value={filters.pharmacistName}
         >
@@ -94,27 +104,29 @@ export function DashboardFilters({
           ))}
         </select>
       </label>
-      <label className="space-y-1.5">
-        <span className="text-xs font-medium uppercase tracking-normal text-zinc-500">
-          Issue
-        </span>
-        <select
-          className="flex h-10 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          onChange={(event) => updateFilter("issueType", event.target.value)}
-          value={filters.issueType}
-        >
-          <option value="">All issues</option>
-          {issueOptions.map((issueType) => (
-            <option key={issueType} value={issueType}>
-              {issueType}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showIssueFilter ? (
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium uppercase tracking-normal text-fg-subtle">
+            Issue
+          </span>
+          <select
+            className="flex h-10 w-full rounded-md border border-field-line bg-field px-3 py-2 text-sm text-fg-strong outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            onChange={(event) => updateFilter("issueType", event.target.value)}
+            value={filters.issueType}
+          >
+            <option value="">All issues</option>
+            {issueOptions.map((issueType) => (
+              <option key={issueType} value={issueType}>
+                {issueType}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <div className="flex items-end">
         <Button
           className={cn(
-            "w-full border-white/10 bg-white/5 text-white hover:bg-white/10 lg:w-auto",
+            "w-full border-tint/10 bg-tint/5 text-fg-strong hover:bg-tint/10 lg:w-auto",
             isPending && "opacity-70",
           )}
           onClick={refreshDashboard}

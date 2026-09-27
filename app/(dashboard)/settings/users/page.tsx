@@ -70,12 +70,12 @@ function ModuleCheckboxes({
     <div className="flex flex-wrap gap-3">
       {AUDIT_TYPES.map((auditType) => (
         <label
-          className="flex items-center gap-2 text-xs text-zinc-300"
+          className="flex items-center gap-2 text-xs text-fg-tertiary"
           htmlFor={`${idPrefix}-${auditType}`}
           key={auditType}
         >
           <input
-            className="h-4 w-4 accent-emerald-400"
+            className="h-4 w-4 accent-brand-vivid"
             defaultChecked={defaultModules.includes(auditType)}
             form={formId}
             id={`${idPrefix}-${auditType}`}
@@ -107,11 +107,11 @@ export default async function UsersManagementPage({
     <PlatformShell>
       <main className="mx-auto w-full max-w-[1500px] space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-2">
-          <p className="text-sm text-emerald-300">Settings</p>
-          <h1 className="text-3xl font-semibold tracking-normal text-white">
+          <p className="text-sm text-brand">Settings</p>
+          <h1 className="text-3xl font-semibold tracking-normal text-fg-strong">
             Users Management
           </h1>
-          <p className="max-w-3xl text-sm leading-6 text-zinc-400">
+          <p className="max-w-3xl text-sm leading-6 text-fg-muted">
             Create users, edit their profiles, and assign one or more read-only
             QA modules to Managers. Admins always receive every module.
           </p>
@@ -126,16 +126,16 @@ export default async function UsersManagementPage({
           </Alert>
         ) : null}
         {params.success ? (
-          <Alert className="border-emerald-300/25 bg-emerald-300/10 text-emerald-100">
-            <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-300" />
+          <Alert className="border-brand/25 bg-brand/10 text-brand-foreground">
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand" />
             <AlertDescription>{params.success}</AlertDescription>
           </Alert>
         ) : null}
 
-        <Card className="border-white/10 bg-white/[0.04] shadow-none">
+        <Card className="border-tint/10 bg-surface shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <UserPlus aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+            <CardTitle className="flex items-center gap-2 text-fg-strong">
+              <UserPlus aria-hidden="true" className="h-5 w-5 text-brand" />
               Create User
             </CardTitle>
             <CardDescription>
@@ -155,7 +155,7 @@ export default async function UsersManagementPage({
                   type="password"
                 />
                 <select
-                  className="h-10 rounded-md border border-white/10 bg-black/20 px-3 text-sm text-zinc-200"
+                  className="h-10 rounded-md border border-field-line bg-field-soft px-3 text-sm text-fg-secondary"
                   defaultValue="manager"
                   name="role"
                 >
@@ -166,12 +166,12 @@ export default async function UsersManagementPage({
                   ))}
                 </select>
               </div>
-              <div className="flex flex-col gap-4 rounded-md border border-white/10 bg-black/20 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-col gap-4 rounded-md border border-tint/10 bg-inset p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="text-sm font-medium text-white">
+                  <p className="text-sm font-medium text-fg-strong">
                     Accessible Modules
                   </p>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-fg-subtle">
                     Select at least one module.
                   </p>
                 </div>
@@ -182,10 +182,10 @@ export default async function UsersManagementPage({
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/[0.04] shadow-none">
+        <Card className="border-tint/10 bg-surface shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <UserCog aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+            <CardTitle className="flex items-center gap-2 text-fg-strong">
+              <UserCog aria-hidden="true" className="h-5 w-5 text-brand" />
               Platform Users
             </CardTitle>
             <CardDescription>
@@ -193,7 +193,7 @@ export default async function UsersManagementPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-md border border-white/10">
+            <div className="overflow-x-auto rounded-md border border-tint/10">
               <Table className="min-w-[1380px]">
                 <TableHeader>
                   <TableRow>
@@ -242,7 +242,7 @@ export default async function UsersManagementPage({
                         </TableCell>
                         <TableCell className="align-top">
                           <select
-                            className="h-9 rounded-md border border-white/10 bg-black/20 px-2 text-sm text-zinc-200"
+                            className="h-9 rounded-md border border-field-line bg-field-soft px-2 text-sm text-fg-secondary"
                             defaultValue={profile.role}
                             disabled={isPrimary}
                             form={`edit-${profile.id}`}
@@ -267,7 +267,7 @@ export default async function UsersManagementPage({
                         </TableCell>
                         <TableCell className="min-w-80 align-top">
                           {isPrimary ? (
-                            <p className="text-sm text-zinc-300">
+                            <p className="text-sm text-fg-tertiary">
                               Clinical QA, Non-Medical QA, Doctors QA
                             </p>
                           ) : (
@@ -296,17 +296,17 @@ export default async function UsersManagementPage({
                             className={cn(
                               "inline-flex rounded-md border px-2 py-1 text-xs font-medium",
                               profile.active
-                                ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
-                                : "border-zinc-500/25 bg-zinc-500/10 text-zinc-400",
+                                ? "border-brand/25 bg-brand/10 text-brand-foreground"
+                                : "border-zinc-500/25 bg-zinc-500/10 text-fg-muted",
                             )}
                           >
                             {profile.active ? "Active" : "Disabled"}
                           </span>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap align-top text-zinc-400">
+                        <TableCell className="whitespace-nowrap align-top text-fg-muted">
                           {formatDateTime(profile.last_login)}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap align-top text-zinc-400">
+                        <TableCell className="whitespace-nowrap align-top text-fg-muted">
                           {formatDateTime(profile.created_at)}
                         </TableCell>
                         <TableCell className="min-w-72 align-top">

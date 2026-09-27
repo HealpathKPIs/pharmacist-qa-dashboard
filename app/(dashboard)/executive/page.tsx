@@ -34,11 +34,11 @@ export default async function ExecutiveDashboardPage() {
     <PlatformShell>
       <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-2">
-          <p className="text-sm text-emerald-300">Platform overview</p>
-          <h1 className="text-3xl font-semibold tracking-normal text-white">
+          <p className="text-sm text-brand">Platform overview</p>
+          <h1 className="text-3xl font-semibold tracking-normal text-fg-strong">
             Executive Dashboard
           </h1>
-          <p className="max-w-2xl text-sm leading-6 text-zinc-400">
+          <p className="max-w-2xl text-sm leading-6 text-fg-muted">
             A consolidated view of quality activity across every QA module.
           </p>
         </div>
@@ -49,29 +49,29 @@ export default async function ExecutiveDashboardPage() {
 
             return (
               <Card
-                className="border-white/10 bg-white/[0.04] shadow-none"
+                className="border-tint/10 bg-surface shadow-none"
                 key={module.auditType}
               >
                 <CardHeader>
-                  <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-md border border-emerald-300/25 bg-emerald-300/10 text-emerald-200">
+                  <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-md border border-brand/25 bg-brand/10 text-brand-strong">
                     <ShieldCheck aria-hidden="true" className="h-5 w-5" />
                   </span>
-                  <CardTitle className="text-white">{module.moduleLabel}</CardTitle>
+                  <CardTitle className="text-fg-strong">{module.moduleLabel}</CardTitle>
                   <CardDescription>{module.dashboardTitle}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-md border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs uppercase text-zinc-500">
+                    <div className="rounded-md border border-tint/10 bg-inset p-3">
+                      <p className="text-xs uppercase text-fg-subtle">
                         {module.workloadLabel}
                       </p>
-                      <p className="mt-2 font-mono text-2xl font-semibold text-white">
+                      <p className="mt-2 font-mono text-2xl font-semibold text-fg-strong">
                         {formatInteger(moduleTotals.totalPatients)}
                       </p>
                     </div>
-                    <div className="rounded-md border border-white/10 bg-black/20 p-3">
-                      <p className="text-xs uppercase text-zinc-500">QA Errors</p>
-                      <p className="mt-2 font-mono text-2xl font-semibold text-white">
+                    <div className="rounded-md border border-tint/10 bg-inset p-3">
+                      <p className="text-xs uppercase text-fg-subtle">QA Errors</p>
+                      <p className="mt-2 font-mono text-2xl font-semibold text-fg-strong">
                         {formatInteger(moduleTotals.totalQaErrors)}
                       </p>
                     </div>

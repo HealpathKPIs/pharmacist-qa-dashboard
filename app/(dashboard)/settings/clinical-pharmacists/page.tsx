@@ -87,11 +87,11 @@ export default async function ClinicalPharmacistsPage({
     <PlatformShell>
       <main className="mx-auto w-full max-w-[1500px] space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-2">
-          <p className="text-sm text-emerald-300">Settings</p>
-          <h1 className="text-3xl font-semibold tracking-normal text-white">
+          <p className="text-sm text-brand">Settings</p>
+          <h1 className="text-3xl font-semibold tracking-normal text-fg-strong">
             Clinical Pharmacists
           </h1>
-          <p className="max-w-3xl text-sm leading-6 text-zinc-400">
+          <p className="max-w-3xl text-sm leading-6 text-fg-muted">
             Only active pharmacists on this list count in Clinical QA: the pharmacist filter,
             totals, cards, charts, insights and the monthly reconciliation KPI. Changes apply
             immediately. Records are never deleted. Non-Medical and Doctors QA are not affected.
@@ -108,16 +108,16 @@ export default async function ClinicalPharmacistsPage({
           </Alert>
         ) : null}
         {params.success ? (
-          <Alert className="border-emerald-300/25 bg-emerald-300/10 text-emerald-100">
-            <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-300" />
+          <Alert className="border-brand/25 bg-brand/10 text-brand-foreground">
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand" />
             <AlertDescription>{params.success}</AlertDescription>
           </Alert>
         ) : null}
 
-        <Card className="border-white/10 bg-white/[0.04] shadow-none">
+        <Card className="border-tint/10 bg-surface shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <UserPlus aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+            <CardTitle className="flex items-center gap-2 text-fg-strong">
+              <UserPlus aria-hidden="true" className="h-5 w-5 text-brand" />
               Add Pharmacist
             </CardTitle>
             <CardDescription>
@@ -147,10 +147,10 @@ export default async function ClinicalPharmacistsPage({
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/[0.04] shadow-none">
+        <Card className="border-tint/10 bg-surface shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Users aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+            <CardTitle className="flex items-center gap-2 text-fg-strong">
+              <Users aria-hidden="true" className="h-5 w-5 text-brand" />
               Clinical Pharmacist List
             </CardTitle>
             <CardDescription>
@@ -159,7 +159,7 @@ export default async function ClinicalPharmacistsPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-md border border-white/10">
+            <div className="overflow-x-auto rounded-md border border-tint/10">
               <Table className="min-w-[1200px]">
                 <TableHeader>
                   <TableRow>
@@ -198,8 +198,8 @@ export default async function ClinicalPharmacistsPage({
                             className={cn(
                               "inline-flex rounded-md border px-2 py-1 text-xs font-medium",
                               pharmacist.active
-                                ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
-                                : "border-zinc-500/25 bg-zinc-500/10 text-zinc-400",
+                                ? "border-brand/25 bg-brand/10 text-brand-foreground"
+                                : "border-zinc-500/25 bg-zinc-500/10 text-fg-muted",
                             )}
                           >
                             {pharmacist.active ? "Active" : "Inactive"}
@@ -221,16 +221,16 @@ export default async function ClinicalPharmacistsPage({
                         <ul className="space-y-2">
                           {pharmacist.aliases.map((alias) => (
                             <li
-                              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-tint/10 bg-inset px-3 py-2 text-sm"
                               key={alias.id}
                             >
-                              <span className="text-zinc-200">
+                              <span className="text-fg-secondary">
                                 {alias.alias}
-                                <span className="ml-2 font-mono text-xs text-zinc-500">
+                                <span className="ml-2 font-mono text-xs text-fg-subtle">
                                   {formatInteger(alias.qaErrorRecords)} QA rows
                                 </span>
                                 {alias.isDisplayName ? (
-                                  <span className="ml-2 text-xs text-emerald-300">
+                                  <span className="ml-2 text-xs text-brand">
                                     Display name
                                   </span>
                                 ) : null}
@@ -242,9 +242,9 @@ export default async function ClinicalPharmacistsPage({
                                 >
                                   <input name="aliasId" type="hidden" value={alias.id} />
                                   {alias.qaErrorRecords > 0 ? (
-                                    <label className="flex items-center gap-1.5 text-xs text-amber-100">
+                                    <label className="flex items-center gap-1.5 text-xs text-warning-foreground">
                                       <input
-                                        className="h-3.5 w-3.5 accent-amber-400"
+                                        className="h-3.5 w-3.5 accent-warning-vivid"
                                         name="confirm"
                                         required
                                         type="checkbox"
@@ -278,10 +278,10 @@ export default async function ClinicalPharmacistsPage({
                           </Button>
                         </form>
                       </TableCell>
-                      <TableCell className="text-right align-top font-mono text-zinc-300">
+                      <TableCell className="text-right align-top font-mono text-fg-tertiary">
                         {formatInteger(pharmacist.qaErrorRecords)}
                       </TableCell>
-                      <TableCell className="text-right align-top font-mono text-zinc-300">
+                      <TableCell className="text-right align-top font-mono text-fg-tertiary">
                         {formatInteger(pharmacist.workloadRecords)}
                       </TableCell>
                     </TableRow>
@@ -292,10 +292,10 @@ export default async function ClinicalPharmacistsPage({
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/[0.04] shadow-none">
+        <Card className="border-tint/10 bg-surface shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <SearchX aria-hidden="true" className="h-5 w-5 text-amber-300" />
+            <CardTitle className="flex items-center gap-2 text-fg-strong">
+              <SearchX aria-hidden="true" className="h-5 w-5 text-warning" />
               Unmatched Names in Clinical QA
             </CardTitle>
             <CardDescription>
@@ -305,11 +305,11 @@ export default async function ClinicalPharmacistsPage({
           </CardHeader>
           <CardContent>
             {roster.unmatchedNames.length === 0 ? (
-              <p className="rounded-md border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500">
+              <p className="rounded-md border border-dashed border-tint/10 px-4 py-6 text-center text-sm text-fg-subtle">
                 Every Clinical QA name is linked to a pharmacist.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-md border border-white/10">
+              <div className="overflow-x-auto rounded-md border border-tint/10">
                 <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
@@ -323,13 +323,13 @@ export default async function ClinicalPharmacistsPage({
                   <TableBody>
                     {roster.unmatchedNames.map((unmatched) => (
                       <TableRow key={unmatched.pharmacistName}>
-                        <TableCell className="font-medium text-zinc-200">
+                        <TableCell className="font-medium text-fg-secondary">
                           {unmatched.pharmacistName}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-zinc-300">
+                        <TableCell className="text-right font-mono text-fg-tertiary">
                           {formatInteger(unmatched.records)}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap text-zinc-400">
+                        <TableCell className="whitespace-nowrap text-fg-muted">
                           {formatDay(unmatched.firstDay)} – {formatDay(unmatched.lastDay)}
                         </TableCell>
                         <TableCell>
@@ -344,7 +344,7 @@ export default async function ClinicalPharmacistsPage({
                             />
                             <select
                               aria-label={`Pharmacist for ${unmatched.pharmacistName}`}
-                              className="h-9 rounded-md border border-white/10 bg-black/20 px-2 text-sm text-zinc-200"
+                              className="h-9 rounded-md border border-field-line bg-field-soft px-2 text-sm text-fg-secondary"
                               name="pharmacistId"
                               required
                             >

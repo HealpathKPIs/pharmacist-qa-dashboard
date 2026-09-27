@@ -8,16 +8,16 @@ import { cn } from "@/lib/utils";
 
 export function ForbiddenView({ homeHref = "/" }: { homeHref?: string }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#08090a] px-6 py-12 text-zinc-100">
-      <Card className="w-full max-w-lg border-white/10 bg-white/[0.04] text-center">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
+      <Card className="w-full max-w-lg border-tint/10 bg-surface text-center">
         <CardHeader className="items-center space-y-4">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-red-300/20 bg-red-300/10 text-red-200">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-danger/20 bg-danger/10 text-danger-strong">
             <ShieldX aria-hidden="true" className="h-7 w-7" />
           </span>
-          <CardTitle className="text-2xl text-white">403 · Access denied</CardTitle>
+          <CardTitle className="text-2xl text-fg-strong">403 · Access denied</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <p className="text-sm leading-6 text-zinc-400">
+          <p className="text-sm leading-6 text-fg-muted">
             Your role does not have permission to view this page. Contact an
             administrator if you believe your access should be changed.
           </p>

@@ -63,3 +63,6 @@ export function getAuditPath(auditType: AuditType, path = "") {
 
   return `${basePath}${path}`;
 }
+
+// Clinical QA KPI page (read-only, like the Clinical dashboard).
+export const CLINICAL_KPI_PATH = getAuditPath("clinical", "/kpi");

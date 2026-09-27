@@ -1,6 +1,7 @@
 import {
   AUDIT_MODULES,
   AUDIT_TYPES,
+  CLINICAL_KPI_PATH,
   getAuditPath,
   type AuditType,
 } from "@/lib/audit-types";
@@ -68,6 +69,15 @@ export function canAccessModule(
   return getEffectiveModules(profile).includes(auditType);
 }
 
+// Read-only pages a module's Managers may open besides the module dashboard.
+const MODULE_VIEW_PATHS: Partial<Record<AuditType, readonly string[]>> = {
+  clinical: [CLINICAL_KPI_PATH],
+};
+
+export function getModuleViewPaths(auditType: AuditType) {
+  return [getAuditPath(auditType), ...(MODULE_VIEW_PATHS[auditType] ?? [])];
+}
+
 export function canAccessPath(
   profile: Pick<UserProfile, "accessibleModules" | "role">,
   pathname: string,
@@ -80,8 +90,8 @@ export function canAccessPath(
     return true;
   }
 
-  return getEffectiveModules(profile).some(
-    (auditType) => pathname === getAuditPath(auditType),
+  return getEffectiveModules(profile).some((auditType) =>
+    getModuleViewPaths(auditType).includes(pathname),
   );
 }
 

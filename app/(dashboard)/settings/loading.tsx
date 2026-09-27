@@ -14,7 +14,7 @@ export default function SettingsLoading() {
           </div>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
             {Array.from({ length: 2 }).map((_, index) => (
-              <Card className="border-white/10 bg-white/[0.04] shadow-none" key={index}>
+              <Card className="border-tint/10 bg-surface shadow-none" key={index}>
                 <CardHeader className="space-y-3">
                   <Skeleton className="h-6 w-44" />
                   <Skeleton className="h-4 w-64" />

@@ -102,20 +102,20 @@ function PreviewTable({
   const columnCount = getColumnCount(previewRows);
 
   return (
-    <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+    <div className="space-y-3 rounded-md border border-tint/10 bg-inset p-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-sm font-medium text-white">{sheetName}</h3>
-        <p className="font-mono text-xs text-zinc-500">{rows.length} rows</p>
+        <h3 className="text-sm font-medium text-fg-strong">{sheetName}</h3>
+        <p className="font-mono text-xs text-fg-subtle">{rows.length} rows</p>
       </div>
       {previewRows.length > 0 ? (
-        <div className="overflow-x-auto rounded-md border border-white/10">
+        <div className="overflow-x-auto rounded-md border border-tint/10">
           <table className="min-w-full border-collapse text-left text-sm">
             <tbody>
               {previewRows.map((row, rowIndex) => (
-                <tr className="border-b border-white/10 last:border-b-0" key={rowIndex}>
+                <tr className="border-b border-tint/10 last:border-b-0" key={rowIndex}>
                   {Array.from({ length: columnCount }).map((_, columnIndex) => (
                     <td
-                      className="max-w-64 border-r border-white/10 px-3 py-2 text-zinc-300 last:border-r-0"
+                      className="max-w-64 border-r border-tint/10 px-3 py-2 text-fg-tertiary last:border-r-0"
                       key={columnIndex}
                     >
                       <span className="line-clamp-2 break-words">
@@ -132,7 +132,7 @@ function PreviewTable({
           </table>
         </div>
       ) : (
-        <div className="rounded-md border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500">
+        <div className="rounded-md border border-dashed border-tint/10 px-4 py-6 text-center text-sm text-fg-subtle">
           No rows found.
         </div>
       )}
@@ -168,13 +168,13 @@ function ValidationSummary({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {summaryItems.map((item) => (
         <div
-          className="rounded-md border border-white/10 bg-black/20 p-4"
+          className="rounded-md border border-tint/10 bg-inset p-4"
           key={item.label}
         >
-          <p className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+          <p className="text-xs font-medium uppercase tracking-normal text-fg-subtle">
             {item.label}
           </p>
-          <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+          <p className="mt-2 text-2xl font-semibold text-fg-strong">{item.value}</p>
         </div>
       ))}
     </div>
@@ -209,16 +209,16 @@ function CleanDatasetSummary({
 
         return (
           <div
-            className="flex items-center justify-between gap-4 rounded-md border border-emerald-300/20 bg-emerald-300/[0.06] p-3"
+            className="flex items-center justify-between gap-4 rounded-md border border-brand/20 bg-brand/[0.06] p-3"
             key={item.label}
           >
             <div className="flex min-w-0 items-center gap-3">
-              <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-emerald-300" />
-              <span className="truncate text-sm font-medium text-emerald-50">
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-brand" />
+              <span className="truncate text-sm font-medium text-brand-surface-foreground">
                 {item.label}
               </span>
             </div>
-            <span className="font-mono text-lg font-semibold text-white">
+            <span className="font-mono text-lg font-semibold text-fg-strong">
               {item.value}
             </span>
           </div>
@@ -235,22 +235,22 @@ function InvalidRowsTable({
 }) {
   if (result.invalidRows.length === 0) {
     return (
-      <Alert className="border-emerald-300/25 bg-emerald-300/10 text-emerald-100">
-        <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-300" />
+      <Alert className="border-brand/25 bg-brand/10 text-brand-foreground">
+        <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand" />
         <AlertDescription>No invalid rows detected.</AlertDescription>
       </Alert>
     );
   }
 
   return (
-    <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+    <div className="space-y-3 rounded-md border border-tint/10 bg-inset p-4">
       <div className="flex items-center gap-3">
-        <AlertCircle aria-hidden="true" className="h-4 w-4 text-red-300" />
-        <h3 className="text-sm font-medium text-white">Invalid Rows</h3>
+        <AlertCircle aria-hidden="true" className="h-4 w-4 text-danger" />
+        <h3 className="text-sm font-medium text-fg-strong">Invalid Rows</h3>
       </div>
-      <div className="overflow-x-auto rounded-md border border-white/10">
+      <div className="overflow-x-auto rounded-md border border-tint/10">
         <table className="min-w-full border-collapse text-left text-sm">
-          <thead className="bg-white/[0.03] text-xs uppercase tracking-normal text-zinc-500">
+          <thead className="bg-tint/[0.03] text-xs uppercase tracking-normal text-fg-subtle">
             <tr>
               <th className="px-3 py-2 font-medium">Sheet</th>
               <th className="px-3 py-2 font-medium">Row</th>
@@ -260,14 +260,14 @@ function InvalidRowsTable({
           <tbody>
             {result.invalidRows.map((row, index) => (
               <tr
-                className="border-t border-white/10 text-zinc-300"
+                className="border-t border-tint/10 text-fg-tertiary"
                 key={`${row.sheetName}-${row.rowNumber}-${index}`}
               >
                 <td className="whitespace-nowrap px-3 py-2">{row.sheetName}</td>
                 <td className="whitespace-nowrap px-3 py-2 font-mono">
                   {row.rowNumber === 0 ? "-" : row.rowNumber}
                 </td>
-                <td className="min-w-80 px-3 py-2 text-zinc-400">{row.reason}</td>
+                <td className="min-w-80 px-3 py-2 text-fg-muted">{row.reason}</td>
               </tr>
             ))}
           </tbody>
@@ -305,30 +305,30 @@ function UploadResultSummary({
   ];
 
   return (
-    <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+    <div className="space-y-3 rounded-md border border-tint/10 bg-inset p-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-sm font-medium text-white">Upload Result</h3>
-        <span className="font-mono text-xs uppercase tracking-normal text-emerald-300">
+        <h3 className="text-sm font-medium text-fg-strong">Upload Result</h3>
+        <span className="font-mono text-xs uppercase tracking-normal text-brand">
           {result.status}
         </span>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {summaryItems.map((item) => (
           <div
-            className="rounded-md border border-white/10 bg-white/[0.03] p-3"
+            className="rounded-md border border-tint/10 bg-tint/[0.03] p-3"
             key={item.label}
           >
-            <p className="text-xs font-medium uppercase tracking-normal text-zinc-500">
+            <p className="text-xs font-medium uppercase tracking-normal text-fg-subtle">
               {item.label}
             </p>
-            <p className="mt-2 text-xl font-semibold text-white">{item.value}</p>
+            <p className="mt-2 text-xl font-semibold text-fg-strong">{item.value}</p>
           </div>
         ))}
       </div>
       {result.errors.length > 0 ? (
-        <div className="space-y-2 rounded-md border border-red-300/20 bg-red-300/[0.06] p-3">
+        <div className="space-y-2 rounded-md border border-danger/20 bg-danger/[0.06] p-3">
           {result.errors.map((message, index) => (
-            <p className="text-sm text-red-100" key={`${message}-${index}`}>
+            <p className="text-sm text-danger-foreground" key={`${message}-${index}`}>
               {message}
             </p>
           ))}
@@ -501,9 +501,9 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
   }
 
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardHeader>
-        <CardTitle className="text-white">{moduleConfig.moduleLabel} Excel Import</CardTitle>
+        <CardTitle className="text-fg-strong">{moduleConfig.moduleLabel} Excel Import</CardTitle>
         <CardDescription>
           {auditType === "clinical"
             ? `Use the ${moduleConfig.moduleLabel} template to preview and validate Sheet1 and Sheet2.`
@@ -512,25 +512,25 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
       </CardHeader>
       <CardContent className="space-y-5">
         <label
-          className="group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-emerald-400/30 bg-emerald-400/[0.03] px-6 py-10 text-center transition-colors hover:border-emerald-300/60 hover:bg-emerald-400/[0.06]"
+          className="group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-brand-vivid/30 bg-brand-vivid/[0.03] px-6 py-10 text-center transition-colors hover:border-brand/60 hover:bg-brand-vivid/[0.06]"
           htmlFor={`${auditType}-excel-file`}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
         >
-          <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-lg border border-emerald-300/25 bg-emerald-300/10 text-emerald-200">
+          <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-lg border border-brand/25 bg-brand/10 text-brand-strong">
             <UploadCloud aria-hidden="true" className="h-7 w-7" />
           </span>
-          <span className="text-base font-medium text-white">
+          <span className="text-base font-medium text-fg-strong">
             Drag and drop an Excel file here
           </span>
-          <span className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
+          <span className="mt-2 max-w-md text-sm leading-6 text-fg-muted">
             Choose the {moduleConfig.moduleLabel} workbook you want to validate. Its
             columns and validation rules are isolated from the other QA product.
           </span>
           <span
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "mt-6 border-white/15 bg-white/5 text-white hover:bg-white/10",
+              "mt-6 border-tint/15 bg-tint/5 text-fg-strong hover:bg-tint/10",
             )}
           >
             Choose File
@@ -546,15 +546,15 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
           />
         </label>
 
-        <div className="flex flex-col gap-4 rounded-md border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-md border border-tint/10 bg-inset p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <FileSpreadsheet
               aria-hidden="true"
-              className="h-5 w-5 shrink-0 text-emerald-300"
+              className="h-5 w-5 shrink-0 text-brand"
             />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Selected file</p>
-              <p className="truncate text-sm text-zinc-400">
+              <p className="text-sm font-medium text-fg-strong">Selected file</p>
+              <p className="truncate text-sm text-fg-muted">
                 {selectedFile?.name ?? "No file selected"}
               </p>
             </div>
@@ -563,7 +563,7 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
             <a
               className={cn(
                 buttonVariants({ variant: "outline" }),
-                "border-white/15 bg-white/5 text-white hover:bg-white/10",
+                "border-tint/15 bg-tint/5 text-fg-strong hover:bg-tint/10",
               )}
               href={`/api/upload/template?auditType=${auditType}`}
             >

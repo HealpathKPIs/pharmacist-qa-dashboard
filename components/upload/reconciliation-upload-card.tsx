@@ -67,12 +67,12 @@ function ReadyStat({
   value: number;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-md border border-emerald-300/20 bg-emerald-300/[0.06] p-3">
+    <div className="flex items-center justify-between gap-4 rounded-md border border-brand/20 bg-brand/[0.06] p-3">
       <div className="flex min-w-0 items-center gap-3">
-        <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-emerald-300" />
-        <span className="truncate text-sm font-medium text-emerald-50">{label}</span>
+        <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-brand" />
+        <span className="truncate text-sm font-medium text-brand-surface-foreground">{label}</span>
       </div>
-      <span className="font-mono text-lg font-semibold text-white">
+      <span className="font-mono text-lg font-semibold text-fg-strong">
         {formatInteger(value)}
       </span>
     </div>
@@ -82,10 +82,10 @@ function ReadyStat({
 function ColumnMatches({ result }: { result: ReconciliationValidationResult }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
-        <h3 className="text-sm font-medium text-white">Imported columns</h3>
+      <div className="space-y-3 rounded-md border border-tint/10 bg-inset p-4">
+        <h3 className="text-sm font-medium text-fg-strong">Imported columns</h3>
         {result.columns.length === 0 ? (
-          <p className="text-sm text-zinc-500">No column matches a Clinical pharmacist.</p>
+          <p className="text-sm text-fg-subtle">No column matches a Clinical pharmacist.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {result.columns.map((column) => (
@@ -93,11 +93,11 @@ function ColumnMatches({ result }: { result: ReconciliationValidationResult }) {
                 className="flex items-center justify-between gap-3"
                 key={column.columnIndex}
               >
-                <span className="truncate text-zinc-400">{column.header}</span>
-                <span className="flex items-center gap-2 text-right text-zinc-100">
+                <span className="truncate text-fg-muted">{column.header}</span>
+                <span className="flex items-center gap-2 text-right text-foreground">
                   {column.pharmacistName}
                   {column.active ? null : (
-                    <span className="rounded-md border border-zinc-500/25 bg-zinc-500/10 px-2 py-0.5 text-xs text-zinc-400">
+                    <span className="rounded-md border border-zinc-500/25 bg-zinc-500/10 px-2 py-0.5 text-xs text-fg-muted">
                       Inactive: saved, not counted
                     </span>
                   )}
@@ -107,19 +107,19 @@ function ColumnMatches({ result }: { result: ReconciliationValidationResult }) {
           </ul>
         )}
       </div>
-      <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
-        <h3 className="text-sm font-medium text-white">Ignored columns</h3>
+      <div className="space-y-3 rounded-md border border-tint/10 bg-inset p-4">
+        <h3 className="text-sm font-medium text-fg-strong">Ignored columns</h3>
         {result.ignoredColumns.length === 0 ? (
-          <p className="text-sm text-zinc-500">No columns were ignored.</p>
+          <p className="text-sm text-fg-subtle">No columns were ignored.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {result.ignoredColumns.map((column) => (
               <li
-                className="rounded-md border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2"
+                className="rounded-md border border-warning/20 bg-warning/[0.06] px-3 py-2"
                 key={column.columnIndex}
               >
-                <p className="font-medium text-amber-100">{column.header}</p>
-                <p className="mt-1 text-xs leading-5 text-amber-100/70">{column.reason}</p>
+                <p className="font-medium text-warning-foreground">{column.header}</p>
+                <p className="mt-1 text-xs leading-5 text-warning-foreground/70">{column.reason}</p>
               </li>
             ))}
           </ul>
@@ -135,14 +135,14 @@ function MonthlyTotalsTable({ result }: { result: ReconciliationValidationResult
   }
 
   return (
-    <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+    <div className="space-y-3 rounded-md border border-tint/10 bg-inset p-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-sm font-medium text-white">Monthly totals in this file</h3>
-        <p className="text-xs text-zinc-500">Check these against the tracker before importing.</p>
+        <h3 className="text-sm font-medium text-fg-strong">Monthly totals in this file</h3>
+        <p className="text-xs text-fg-subtle">Check these against the tracker before importing.</p>
       </div>
-      <div className="max-h-80 overflow-auto rounded-md border border-white/10">
+      <div className="max-h-80 overflow-auto rounded-md border border-tint/10">
         <table className="min-w-full border-collapse text-left text-sm">
-          <thead className="bg-white/[0.03] text-xs uppercase tracking-normal text-zinc-500">
+          <thead className="bg-tint/[0.03] text-xs uppercase tracking-normal text-fg-subtle">
             <tr>
               <th className="px-3 py-2 font-medium">Month</th>
               <th className="px-3 py-2 font-medium">Pharmacist</th>
@@ -152,14 +152,14 @@ function MonthlyTotalsTable({ result }: { result: ReconciliationValidationResult
           <tbody>
             {result.monthlyTotals.map((total) => (
               <tr
-                className="border-t border-white/10 text-zinc-300"
+                className="border-t border-tint/10 text-fg-tertiary"
                 key={`${total.month}-${total.pharmacistName}`}
               >
                 <td className="whitespace-nowrap px-3 py-2">{formatMonthLabel(total.month)}</td>
                 <td className="px-3 py-2">
                   {total.pharmacistName}
                   {total.active ? null : (
-                    <span className="ml-2 text-xs text-zinc-500">(inactive)</span>
+                    <span className="ml-2 text-xs text-fg-subtle">(inactive)</span>
                   )}
                 </td>
                 <td className="px-3 py-2 text-right font-mono">
@@ -352,9 +352,9 @@ export function ReconciliationUploadCard({
   }
 
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardHeader>
-        <CardTitle className="text-white">Medication Reconciliation Tracker</CardTitle>
+        <CardTitle className="text-fg-strong">Medication Reconciliation Tracker</CardTitle>
         <CardDescription className="leading-6">
           First worksheet: column A <span className="font-mono">DAY</span> (a real Excel
           date), column B <span className="font-mono">TASK</span> (optional), then one column
@@ -364,24 +364,24 @@ export function ReconciliationUploadCard({
       </CardHeader>
       <CardContent className="space-y-5">
         <label
-          className="group flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-emerald-400/30 bg-emerald-400/[0.03] px-6 py-8 text-center transition-colors hover:border-emerald-300/60 hover:bg-emerald-400/[0.06]"
+          className="group flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-brand-vivid/30 bg-brand-vivid/[0.03] px-6 py-8 text-center transition-colors hover:border-brand/60 hover:bg-brand-vivid/[0.06]"
           htmlFor="clinical-reconciliation-file"
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
         >
-          <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-emerald-300/25 bg-emerald-300/10 text-emerald-200">
+          <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-brand/25 bg-brand/10 text-brand-strong">
             <Pill aria-hidden="true" className="h-6 w-6" />
           </span>
-          <span className="text-base font-medium text-white">
+          <span className="text-base font-medium text-fg-strong">
             Drag and drop the reconciliation tracker here
           </span>
-          <span className="mt-2 max-w-md text-sm leading-6 text-zinc-400">
+          <span className="mt-2 max-w-md text-sm leading-6 text-fg-muted">
             Only columns that match an active or inactive Clinical pharmacist are imported.
           </span>
           <span
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "mt-5 border-white/15 bg-white/5 text-white hover:bg-white/10",
+              "mt-5 border-tint/15 bg-tint/5 text-fg-strong hover:bg-tint/10",
             )}
           >
             Choose File
@@ -397,12 +397,12 @@ export function ReconciliationUploadCard({
           />
         </label>
 
-        <div className="flex flex-col gap-4 rounded-md border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-md border border-tint/10 bg-inset p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <FileSpreadsheet aria-hidden="true" className="h-5 w-5 shrink-0 text-emerald-300" />
+            <FileSpreadsheet aria-hidden="true" className="h-5 w-5 shrink-0 text-brand" />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Selected file</p>
-              <p className="truncate text-sm text-zinc-400">
+              <p className="text-sm font-medium text-fg-strong">Selected file</p>
+              <p className="truncate text-sm text-fg-muted">
                 {selectedFile?.name ?? "No file selected"}
               </p>
             </div>
@@ -466,7 +466,7 @@ export function ReconciliationUploadCard({
               </div>
             ) : null}
             {validationResult.combinedRows > 0 ? (
-              <p className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-zinc-400">
+              <p className="rounded-md border border-tint/10 bg-inset px-3 py-2 text-sm text-fg-muted">
                 {validationResult.combinedRows} row(s) share a date with another row; their
                 counts were added together per pharmacist.
               </p>
@@ -475,7 +475,7 @@ export function ReconciliationUploadCard({
               <div className="space-y-2">
                 <UploadResultSummary result={uploadResult} />
                 {uploadResult.uploadBatchId ? (
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-fg-subtle">
                     Upload batch ID: <span className="font-mono">{uploadResult.uploadBatchId}</span>
                   </p>
                 ) : null}

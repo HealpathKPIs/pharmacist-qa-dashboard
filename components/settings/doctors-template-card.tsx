@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils";
 
 export function DoctorsTemplateCard() {
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-white">
-          <Download aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+        <CardTitle className="flex items-center gap-2 text-fg-strong">
+          <Download aria-hidden="true" className="h-5 w-5 text-brand" />
           Doctors Upload Template
         </CardTitle>
         <CardDescription>
@@ -26,7 +26,7 @@ export function DoctorsTemplateCard() {
         <a
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "w-full border-white/15 bg-white/5 text-white hover:bg-white/10",
+            "w-full border-tint/15 bg-tint/5 text-fg-strong hover:bg-tint/10",
           )}
           href="/api/upload/template?auditType=doctors"
         >

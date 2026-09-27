@@ -43,19 +43,19 @@ const variantStyles: Record<
   { className: string; icon: LucideIcon; iconClassName: string }
 > = {
   default: {
-    className: "border-white/10 bg-[#111315] text-zinc-100",
+    className: "border-tint/10 bg-popover text-foreground",
     icon: Info,
-    iconClassName: "text-zinc-300",
+    iconClassName: "text-fg-tertiary",
   },
   destructive: {
-    className: "border-red-300/25 bg-red-950 text-red-50",
+    className: "border-danger/25 bg-danger-surface text-danger-surface-foreground",
     icon: TriangleAlert,
-    iconClassName: "text-red-200",
+    iconClassName: "text-danger-strong",
   },
   success: {
-    className: "border-emerald-300/25 bg-emerald-950 text-emerald-50",
+    className: "border-brand/25 bg-brand-surface text-brand-surface-foreground",
     icon: CheckCircle2,
-    iconClassName: "text-emerald-200",
+    iconClassName: "text-brand-strong",
   },
 };
 
@@ -95,7 +95,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               className={cn(
-                "pointer-events-auto flex gap-3 rounded-md border p-4 shadow-2xl shadow-black/30 animate-soft-in",
+                "pointer-events-auto flex gap-3 rounded-md border p-4 shadow-2xl shadow-black/10 dark:shadow-black/30 animate-soft-in",
                 styles.className,
               )}
               key={item.id}
@@ -115,7 +115,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               </div>
               <Button
                 aria-label="Dismiss notification"
-                className="h-7 w-7 shrink-0 border-white/10 bg-transparent p-0 text-current hover:bg-white/10"
+                className="h-7 w-7 shrink-0 border-tint/10 bg-transparent p-0 text-current hover:bg-tint/10"
                 onClick={() => dismiss(item.id)}
                 type="button"
                 variant="outline"

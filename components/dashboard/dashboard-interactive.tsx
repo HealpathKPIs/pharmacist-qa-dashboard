@@ -65,7 +65,22 @@ import type {
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import { cn } from "@/lib/utils";
 
-const chartColors = ["#34d399", "#60a5fa", "#f59e0b", "#f472b6", "#a78bfa", "#22d3ee"];
+// Chart colours are theme tokens (app/globals.css), so charts follow Light/Dark.
+const chartColors = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+];
+
+const chartTooltipStyle = {
+  background: "var(--panel)",
+  border: "1px solid var(--chart-tooltip-border)",
+  borderRadius: "8px",
+  color: "var(--chart-tooltip-text)",
+};
 
 type DialogState =
   | {
@@ -83,9 +98,6 @@ type DialogState =
   | null;
 
 type DashboardInteractiveProps = {
-  // Rendered right after the Executive Summary (Clinical: the monthly
-  // medication reconciliation section). It does not affect any calculation.
-  afterExecutiveSummary?: React.ReactNode;
   auditType: AuditType;
   dailyPatientDetails: DailyPatientDetail[];
   dailyTrend: DailyTrendPoint[];
@@ -449,19 +461,19 @@ function TrendIndicator({
 
   return (
     <div className="space-y-2 text-xs">
-      <div className="flex items-center justify-between gap-3 text-zinc-500">
+      <div className="flex items-center justify-between gap-3 text-fg-subtle">
         <span>Previous</span>
-        <span className="font-mono text-zinc-300">{valueFormatter(previous)}</span>
+        <span className="font-mono text-fg-tertiary">{valueFormatter(previous)}</span>
       </div>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-zinc-500">Difference</span>
+        <span className="text-fg-subtle">Difference</span>
         <span
           className={cn(
             "inline-flex items-center gap-1 rounded-md border px-2 py-1 font-mono",
             direction === "up" &&
-              "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
-            direction === "down" && "border-red-300/25 bg-red-300/10 text-red-200",
-            direction === "flat" && "border-white/10 bg-white/[0.04] text-zinc-400",
+              "border-brand/25 bg-brand/10 text-brand-strong",
+            direction === "down" && "border-danger/25 bg-danger/10 text-danger-strong",
+            direction === "flat" && "border-tint/10 bg-tint/[0.04] text-fg-muted",
           )}
         >
           {direction === "up" ? <ArrowUp aria-hidden="true" className="h-3 w-3" /> : null}
@@ -470,7 +482,7 @@ function TrendIndicator({
           ) : null}
           {direction === "flat" ? <Minus aria-hidden="true" className="h-3 w-3" /> : null}
           {differenceFormatter(difference)}
-          <span className="text-current/70">({formatSignedPercent(percentDifference)})</span>
+          <span className="dark:text-current/70">({formatSignedPercent(percentDifference)})</span>
         </span>
       </div>
     </div>
@@ -502,31 +514,31 @@ function KpiCard({
 }) {
   return (
     <button
-      className="group animate-soft-in h-full rounded-xl text-left outline-none transition-transform duration-300 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-emerald-300"
+      className="group animate-soft-in h-full rounded-xl text-left outline-none transition-transform duration-300 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-brand"
       onClick={onClick}
       type="button"
     >
-      <Card className="h-full min-h-[226px] border-white/10 bg-white/[0.05] shadow-[0_18px_60px_rgba(0,0,0,0.18)] transition-all duration-300 group-hover:border-emerald-300/35 group-hover:bg-white/[0.075] group-hover:shadow-[0_22px_70px_rgba(16,185,129,0.08)]">
+      <Card className="h-full min-h-[226px] border-tint/10 bg-surface dark:bg-white/[0.05] shadow-(--shadow-card) transition-all duration-300 group-hover:border-brand/35 dark:group-hover:bg-white/[0.075] group-hover:shadow-(--shadow-glow)">
         <CardContent className="flex h-full flex-col justify-between p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+              <p className="text-xs font-semibold uppercase tracking-normal text-fg-subtle">
                 {label}
               </p>
-              <p className="mt-4 truncate font-mono text-3xl font-semibold leading-none text-white">
+              <p className="mt-4 truncate font-mono text-3xl font-semibold leading-none text-fg-strong">
                 {value}
               </p>
-              <p className="mt-3 text-sm leading-5 text-zinc-400">{detail}</p>
+              <p className="mt-3 text-sm leading-5 text-fg-muted">{detail}</p>
             </div>
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300 transition-colors group-hover:border-emerald-300/45">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand/10 text-brand transition-colors group-hover:border-brand/45">
               <Icon aria-hidden="true" className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-5 border-t border-white/10 pt-4">
+          <div className="mt-5 border-t border-tint/10 pt-4">
             {previousLabel ? (
-              <div className="mb-2 flex items-center justify-between gap-3 text-xs text-zinc-500">
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs text-fg-subtle">
                 <span>Previous issue</span>
-                <span className="truncate text-right font-mono text-zinc-300">
+                <span className="truncate text-right font-mono text-fg-tertiary">
                   {previousLabel}
                 </span>
               </div>
@@ -564,24 +576,24 @@ function ExecutiveMetricCard({
   const formatter = trendValueFormatter ?? ((metric: number) => formatInteger(Math.round(metric)));
 
   return (
-    <Card className="animate-soft-in h-full min-h-[184px] border-white/10 bg-gradient-to-br from-white/[0.075] to-white/[0.035] shadow-[0_20px_70px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300/35 hover:shadow-[0_26px_80px_rgba(16,185,129,0.1)]">
+    <Card className="animate-soft-in h-full min-h-[184px] border-tint/10 bg-transparent bg-gradient-to-br from-surface-from to-surface-to shadow-(--shadow-card-lg) transition-all duration-300 hover:-translate-y-1 hover:border-brand/35 hover:shadow-(--shadow-glow-lg)">
       <CardContent className="flex h-full flex-col justify-between p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-normal text-fg-subtle">
               {label}
             </p>
-            <p className="mt-4 truncate font-mono text-3xl font-semibold leading-none text-white">
+            <p className="mt-4 truncate font-mono text-3xl font-semibold leading-none text-fg-strong">
               <AnimatedMetric formatter={formatter} value={value} />
             </p>
           </div>
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand/10 text-brand">
             <Icon aria-hidden="true" className="h-5 w-5" />
           </span>
         </div>
         <div className="space-y-3">
-          <p className="text-sm leading-5 text-zinc-400">{detail}</p>
-          <div className="border-t border-white/10 pt-3">
+          <p className="text-sm leading-5 text-fg-muted">{detail}</p>
+          <div className="border-t border-tint/10 pt-3">
             <TrendIndicator
               current={value}
               differenceFormatter={trendDifferenceFormatter}
@@ -607,48 +619,48 @@ function InsightCard({
   const ArrowIcon = isImprovement ? ArrowDown : isDecline ? ArrowUp : Minus;
 
   return (
-    <Card className="animate-soft-in h-full min-h-[178px] border-white/10 bg-white/[0.045] shadow-[0_18px_60px_rgba(0,0,0,0.18)] transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.065]">
+    <Card className="animate-soft-in h-full min-h-[178px] border-tint/10 bg-surface dark:bg-white/[0.045] shadow-(--shadow-card) transition-all duration-300 hover:-translate-y-1 dark:hover:bg-white/[0.065]">
       <CardContent className="flex h-full flex-col justify-between p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-normal text-fg-subtle">
               {insight.label}
             </p>
-            <p className="mt-3 truncate text-lg font-semibold text-white">{insight.name}</p>
+            <p className="mt-3 truncate text-lg font-semibold text-fg-strong">{insight.name}</p>
           </div>
           <span
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
-              isImprovement && "border-emerald-300/25 bg-emerald-300/10 text-emerald-300",
-              isDecline && "border-red-300/25 bg-red-300/10 text-red-300",
-              !isImprovement && !isDecline && "border-white/10 bg-white/[0.04] text-zinc-400",
+              isImprovement && "border-brand/25 bg-brand/10 text-brand",
+              isDecline && "border-danger/25 bg-danger/10 text-danger",
+              !isImprovement && !isDecline && "border-tint/10 bg-tint/[0.04] text-fg-muted",
             )}
           >
             <ArrowIcon aria-hidden="true" className="h-4 w-4" />
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-xs">
+        <div className="grid grid-cols-2 gap-3 border-t border-tint/10 pt-4 text-xs">
           <div>
-            <p className="text-zinc-500">Severity rate</p>
-            <p className="mt-1 font-mono text-sm text-zinc-100">
+            <p className="text-fg-subtle">Severity rate</p>
+            <p className="mt-1 font-mono text-sm text-foreground">
               {formatRate(insight.severityScoreRate)}
             </p>
           </div>
           <div>
-            <p className="text-zinc-500">Severity score</p>
-            <p className="mt-1 font-mono text-sm text-zinc-100">
+            <p className="text-fg-subtle">Severity score</p>
+            <p className="mt-1 font-mono text-sm text-foreground">
               {formatInteger(insight.totalSeverityScore)}
             </p>
           </div>
           <div>
-            <p className="text-zinc-500">QA errors</p>
-            <p className="mt-1 font-mono text-sm text-zinc-100">
+            <p className="text-fg-subtle">QA errors</p>
+            <p className="mt-1 font-mono text-sm text-foreground">
               {formatInteger(insight.totalQaErrors)}
             </p>
           </div>
           <div>
-            <p className="text-zinc-500">{workloadLabel}</p>
-            <p className="mt-1 font-mono text-sm text-zinc-100">
+            <p className="text-fg-subtle">{workloadLabel}</p>
+            <p className="mt-1 font-mono text-sm text-foreground">
               {formatInteger(insight.totalPatients)}
             </p>
           </div>
@@ -657,9 +669,9 @@ function InsightCard({
           <p
             className={cn(
               "mt-3 rounded-lg border px-3 py-2 text-xs font-medium",
-              isImprovement && "border-emerald-300/20 bg-emerald-300/10 text-emerald-200",
-              isDecline && "border-red-300/20 bg-red-300/10 text-red-200",
-              !isImprovement && !isDecline && "border-white/10 bg-white/[0.04] text-zinc-400",
+              isImprovement && "border-brand/20 bg-brand/10 text-brand-strong",
+              isDecline && "border-danger/20 bg-danger/10 text-danger-strong",
+              !isImprovement && !isDecline && "border-tint/10 bg-tint/[0.04] text-fg-muted",
             )}
           >
             {isImprovement ? "Improvement" : isDecline ? "Decline" : "Change"}{" "}
@@ -684,20 +696,20 @@ function SectionHeading({
     <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow ? (
-          <p className="text-xs font-semibold uppercase tracking-normal text-emerald-300">
+          <p className="text-xs font-semibold uppercase tracking-normal text-brand">
             {eyebrow}
           </p>
         ) : null}
-        <h2 className="mt-1 text-xl font-semibold tracking-normal text-white">{title}</h2>
+        <h2 className="mt-1 text-xl font-semibold tracking-normal text-fg-strong">{title}</h2>
       </div>
-      <p className="max-w-2xl text-sm leading-6 text-zinc-400">{subtitle}</p>
+      <p className="max-w-2xl text-sm leading-6 text-fg-muted">{subtitle}</p>
     </div>
   );
 }
 
 function ChartEmptyState({ label }: { label: string }) {
   return (
-    <div className="flex min-h-64 items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/20 px-6 text-center text-sm leading-6 text-zinc-500">
+    <div className="flex min-h-64 items-center justify-center rounded-lg border border-dashed border-tint/10 bg-inset px-6 text-center text-sm leading-6 text-fg-subtle">
       {label}
     </div>
   );
@@ -705,9 +717,9 @@ function ChartEmptyState({ label }: { label: string }) {
 
 function ActivityStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className="mt-2 font-mono text-lg font-semibold text-white">
+    <div className="rounded-lg border border-tint/10 bg-inset p-3">
+      <p className="text-xs text-fg-subtle">{label}</p>
+      <p className="mt-2 font-mono text-lg font-semibold text-fg-strong">
         {formatInteger(value)}
       </p>
     </div>
@@ -716,14 +728,14 @@ function ActivityStat({ label, value }: { label: string; value: number }) {
 
 function RecentActivityCard({ recentUpload }: { recentUpload: RecentUpload | null }) {
   return (
-    <Card className="animate-soft-in h-full border-white/10 bg-white/[0.045] shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+    <Card className="animate-soft-in h-full border-tint/10 bg-surface dark:bg-white/[0.045] shadow-(--shadow-card)">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-sky-300/20 bg-sky-300/10 text-sky-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-info/20 bg-info/10 text-info">
             <UploadCloud aria-hidden="true" className="h-4 w-4" />
           </span>
           <div>
-            <CardTitle className="text-base text-white">Recent Activity</CardTitle>
+            <CardTitle className="text-base text-fg-strong">Recent Activity</CardTitle>
             <CardDescription>Latest import batch</CardDescription>
           </div>
         </div>
@@ -732,8 +744,8 @@ function RecentActivityCard({ recentUpload }: { recentUpload: RecentUpload | nul
         {recentUpload ? (
           <div className="space-y-4">
             <div>
-              <p className="truncate text-sm font-medium text-white">{recentUpload.fileName}</p>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="truncate text-sm font-medium text-fg-strong">{recentUpload.fileName}</p>
+              <p className="mt-1 text-xs text-fg-subtle">
                 {formatDateTime(recentUpload.uploadedAt)}
               </p>
             </div>
@@ -761,19 +773,19 @@ function StatusRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 px-3 py-2.5">
-      <span className="flex items-center gap-2 text-sm text-zinc-300">
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-tint/10 bg-inset px-3 py-2.5">
+      <span className="flex items-center gap-2 text-sm text-fg-tertiary">
         <span
           className={cn(
             "h-2.5 w-2.5 rounded-full",
             healthy
-              ? "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.45)]"
-              : "bg-red-300",
+              ? "bg-brand shadow-(--shadow-status-dot)"
+              : "bg-danger",
           )}
         />
         {label}
       </span>
-      <span className={cn("text-xs", healthy ? "text-emerald-200" : "text-red-200")}>
+      <span className={cn("text-xs", healthy ? "text-brand-strong" : "text-danger-strong")}>
         {value}
       </span>
     </div>
@@ -791,14 +803,14 @@ function SystemStatusCard({
   const overallHealthy = databaseHealthy && lastImportHealthy;
 
   return (
-    <Card className="animate-soft-in h-full border-white/10 bg-white/[0.045] shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+    <Card className="animate-soft-in h-full border-tint/10 bg-surface dark:bg-white/[0.045] shadow-(--shadow-card)">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-brand/20 bg-brand/10 text-brand">
             <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
           </span>
           <div>
-            <CardTitle className="text-base text-white">System Status</CardTitle>
+            <CardTitle className="text-base text-fg-strong">System Status</CardTitle>
             <CardDescription>Operational readiness</CardDescription>
           </div>
         </div>
@@ -837,7 +849,7 @@ function PatientRowsTable({
   }
 
   return (
-    <div className="max-h-[58vh] overflow-auto rounded-md border border-white/10">
+    <div className="max-h-[58vh] overflow-auto rounded-md border border-tint/10">
       <Table>
         <TableHeader>
           <TableRow>
@@ -849,13 +861,13 @@ function PatientRowsTable({
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.id}>
-              <TableCell className="whitespace-nowrap text-zinc-200">
+              <TableCell className="whitespace-nowrap text-fg-secondary">
                 {formatDay(row.day)}
               </TableCell>
-              <TableCell className="text-right font-mono text-zinc-300">
+              <TableCell className="text-right font-mono text-fg-tertiary">
                 {formatInteger(row.patientCount)}
               </TableCell>
-              <TableCell className="text-zinc-400">{row.sourceFile ?? "-"}</TableCell>
+              <TableCell className="text-fg-muted">{row.sourceFile ?? "-"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -878,7 +890,7 @@ export function QaErrorRowsTable({
   }
 
   return (
-    <div className="max-h-[58vh] overflow-auto rounded-md border border-white/10">
+    <div className="max-h-[58vh] overflow-auto rounded-md border border-tint/10">
       <Table>
         <TableHeader>
           <TableRow>
@@ -893,18 +905,18 @@ export function QaErrorRowsTable({
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.id}>
-              <TableCell className="whitespace-nowrap text-zinc-300">
+              <TableCell className="whitespace-nowrap text-fg-tertiary">
                 {formatDay(row.day)}
               </TableCell>
-              <TableCell className="whitespace-nowrap font-medium text-zinc-200">
+              <TableCell className="whitespace-nowrap font-medium text-fg-secondary">
                 {row.pharmacistName}
               </TableCell>
-              <TableCell className="font-mono text-zinc-400">{row.patientId}</TableCell>
-              <TableCell className="min-w-64 text-zinc-300">{row.issueType}</TableCell>
-              <TableCell className="text-right font-mono text-zinc-400">
+              <TableCell className="font-mono text-fg-muted">{row.patientId}</TableCell>
+              <TableCell className="min-w-64 text-fg-tertiary">{row.issueType}</TableCell>
+              <TableCell className="text-right font-mono text-fg-muted">
                 {row.score}
               </TableCell>
-              <TableCell className="min-w-80 text-zinc-400">
+              <TableCell className="min-w-80 text-fg-muted">
                 {row.issueDetails ?? "-"}
               </TableCell>
             </TableRow>
@@ -916,7 +928,6 @@ export function QaErrorRowsTable({
 }
 
 export function DashboardInteractive({
-  afterExecutiveSummary,
   auditType,
   dailyPatientDetails,
   dailyTrend,
@@ -1183,8 +1194,6 @@ export function DashboardInteractive({
         </div>
       </section>
 
-      {afterExecutiveSummary}
-
       {auditType === "clinical" ? (
       <section className="space-y-4">
         <SectionHeading
@@ -1299,9 +1308,9 @@ export function DashboardInteractive({
           title="Performance Trends"
         />
         <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none xl:col-span-2">
+        <Card className="animate-soft-in border-tint/10 bg-surface shadow-none xl:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base text-white">Daily Trend</CardTitle>
+            <CardTitle className="text-base text-fg-strong">Daily Trend</CardTitle>
             <CardDescription>
               {dailyTrendShowsErrorCount ? "Total errors per day" : "Error rate over time"}
             </CardDescription>
@@ -1312,29 +1321,24 @@ export function DashboardInteractive({
             ) : (
               <ResponsiveContainer height="100%" width="100%">
                 <LineChart data={dailyTrend} margin={{ bottom: 8, left: 0, right: 12, top: 8 }}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                   <XAxis
                     dataKey="day"
                     minTickGap={24}
-                    stroke="#71717a"
+                    stroke="var(--chart-axis)"
                     tickFormatter={(value: string) => formatDay(value).slice(0, 6)}
                     tickLine={false}
                   />
                   <YAxis
                     allowDecimals={!dailyTrendShowsErrorCount}
-                    stroke="#71717a"
+                    stroke="var(--chart-axis)"
                     tickFormatter={(value: number) =>
                       dailyTrendShowsErrorCount ? formatInteger(value) : `${value}%`
                     }
                     tickLine={false}
                   />
                   <Tooltip
-                    contentStyle={{
-                      background: "#0b0d0f",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: "8px",
-                      color: "#f4f4f5",
-                    }}
+                    contentStyle={chartTooltipStyle}
                     formatter={(value, name) => {
                       const numericValue = Number(value ?? 0);
 
@@ -1353,9 +1357,9 @@ export function DashboardInteractive({
                   />
                   <Line
                     dataKey={dailyTrendShowsErrorCount ? "errorCount" : "errorRate"}
-                    dot={{ fill: "#34d399", r: 3 }}
+                    dot={{ fill: "var(--chart-1)", r: 3 }}
                     name={dailyTrendShowsErrorCount ? "Total Errors" : "Error rate"}
-                    stroke="#34d399"
+                    stroke="var(--chart-1)"
                     strokeWidth={3}
                     type="monotone"
                   />
@@ -1415,9 +1419,9 @@ export function DashboardInteractive({
           }
           title="QA Errors by Issue Type"
         />
-        <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+        <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
           <CardHeader>
-            <CardTitle className="text-base text-white">Top Records</CardTitle>
+            <CardTitle className="text-base text-fg-strong">Top Records</CardTitle>
             <CardDescription>Quick scan of current filter results</CardDescription>
           </CardHeader>
           <CardContent>
@@ -1427,7 +1431,7 @@ export function DashboardInteractive({
               <div className="space-y-3">
                 {qaErrorDetails.slice(0, 5).map((row) => (
                   <button
-                    className="flex w-full items-start gap-3 rounded-md border border-white/10 bg-black/20 p-3 text-left transition-colors hover:border-emerald-300/25 hover:bg-white/[0.04]"
+                    className="flex w-full items-start gap-3 rounded-md border border-tint/10 bg-inset p-3 text-left transition-colors hover:border-brand/25 hover:bg-tint/[0.04]"
                     key={row.id}
                     onClick={() =>
                       openErrorsDialog(
@@ -1438,12 +1442,12 @@ export function DashboardInteractive({
                     }
                     type="button"
                   >
-                    <Search aria-hidden="true" className="mt-0.5 h-4 w-4 text-emerald-300" />
+                    <Search aria-hidden="true" className="mt-0.5 h-4 w-4 text-brand" />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-white">
+                      <span className="block truncate text-sm font-medium text-fg-strong">
                         {row.issueType}
                       </span>
-                      <span className="mt-1 block text-xs text-zinc-500">
+                      <span className="mt-1 block text-xs text-fg-subtle">
                         {formatDay(row.day)} · {row.pharmacistName} · Score {row.score}
                       </span>
                     </span>
@@ -1482,9 +1486,9 @@ function InteractiveBarChart({
   const visibleData = data.slice(0, 8);
 
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-[0_18px_60px_rgba(0,0,0,0.16)] transition-colors hover:border-white/15">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-(--shadow-card-sm) transition-colors hover:border-tint/15">
       <CardHeader className="space-y-2 pb-2">
-        <CardTitle className="text-base text-white">{title}</CardTitle>
+        <CardTitle className="text-base text-fg-strong">{title}</CardTitle>
         <CardDescription className="leading-6">
           Click a bar to inspect matching records
         </CardDescription>
@@ -1499,17 +1503,17 @@ function InteractiveBarChart({
               layout="vertical"
               margin={{ bottom: 24, left: 18, right: 28, top: 16 }}
             >
-              <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.08)" />
+              <CartesianGrid horizontal={false} stroke="var(--chart-grid)" />
               <XAxis
                 axisLine={false}
-                stroke="#71717a"
+                stroke="var(--chart-axis)"
                 tickLine={false}
                 tickMargin={10}
                 type="number"
               />
               <YAxis
                 dataKey="name"
-                stroke="#a1a1aa"
+                stroke="var(--chart-label)"
                 tickFormatter={(value: string) => truncateLabel(value, 22)}
                 tickLine={false}
                 tickMargin={10}
@@ -1517,18 +1521,13 @@ function InteractiveBarChart({
                 width={152}
               />
               <Tooltip
-                contentStyle={{
-                  background: "#0b0d0f",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: "8px",
-                  color: "#f4f4f5",
-                }}
-                cursor={{ fill: "rgba(52,211,153,0.08)" }}
+                contentStyle={chartTooltipStyle}
+                cursor={{ fill: "var(--chart-cursor)" }}
                 formatter={(value) => [formatInteger(Number(value ?? 0)), "Errors"]}
                 wrapperStyle={{ outline: "none", zIndex: 20 }}
               />
               <Bar
-                activeBar={{ fill: "#6ee7b7" }}
+                activeBar={{ fill: "var(--chart-active)" }}
                 className="cursor-pointer"
                 dataKey="value"
                 onClick={(payload) => onBarClick(payload as BarClickPayload)}
@@ -1538,7 +1537,7 @@ function InteractiveBarChart({
                   <Cell
                     fill={
                       selectedName === entry.name
-                        ? "#6ee7b7"
+                        ? "var(--chart-active)"
                         : chartColors[index % chartColors.length]
                     }
                     key={entry.name}
@@ -1568,9 +1567,9 @@ function DonutChartCard({
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <Card className="animate-soft-in border-white/10 bg-white/[0.04] shadow-none">
+    <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardHeader>
-        <CardTitle className="text-base text-white">{title}</CardTitle>
+        <CardTitle className="text-base text-fg-strong">{title}</CardTitle>
         <CardDescription>
           {onSliceClick ? "Click a slice to inspect matching records" : "Filtered distribution"}
         </CardDescription>
@@ -1603,12 +1602,7 @@ function DonutChartCard({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{
-                      background: "#0b0d0f",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: "8px",
-                      color: "#f4f4f5",
-                    }}
+                    contentStyle={chartTooltipStyle}
                     formatter={(value) => [formatInteger(Number(value ?? 0)), "Records"]}
                   />
                 </PieChart>
@@ -1617,14 +1611,14 @@ function DonutChartCard({
             <div className="space-y-2">
               {data.slice(0, 6).map((item, index) => (
                 <div className="flex items-center justify-between gap-3 text-sm" key={item.name}>
-                  <span className="flex min-w-0 items-center gap-2 text-zinc-300">
+                  <span className="flex min-w-0 items-center gap-2 text-fg-tertiary">
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: chartColors[index % chartColors.length] }}
                     />
                     <span className="truncate">{item.name}</span>
                   </span>
-                  <span className="font-mono text-zinc-500">
+                  <span className="font-mono text-fg-subtle">
                     {formatInteger(item.value)} ·{" "}
                     {total === 0 ? "0.0%" : formatSignedPercent((item.value / total) * 100).replace("+", "")}
                   </span>

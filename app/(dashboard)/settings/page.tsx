@@ -2,6 +2,7 @@ import { Pill, Users } from "lucide-react";
 import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { AppearanceCard } from "@/components/settings/appearance-card";
 import { SettingsForms } from "@/components/settings/settings-forms";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -23,19 +24,19 @@ export default async function SettingsPage() {
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <section className="space-y-6">
           <div className="space-y-2">
-            <p className="text-sm text-emerald-300">Admin controls</p>
-            <h1 className="text-3xl font-semibold tracking-normal text-white">
+            <p className="text-sm text-brand">Admin controls</p>
+            <h1 className="text-3xl font-semibold tracking-normal text-fg-strong">
               Settings
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-zinc-400">
-              Manage dashboard access and the current signed-in session.
+            <p className="max-w-2xl text-sm leading-6 text-fg-muted">
+              Manage dashboard access, appearance, and the current signed-in session.
             </p>
           </div>
           {isPrimaryAdmin(profile) ? (
-            <Card className="border-white/10 bg-white/[0.04] shadow-none">
+            <Card className="border-tint/10 bg-surface shadow-none">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Users aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+                <CardTitle className="flex items-center gap-2 text-fg-strong">
+                  <Users aria-hidden="true" className="h-5 w-5 text-brand" />
                   Users Management
                 </CardTitle>
                 <CardDescription>
@@ -53,10 +54,10 @@ export default async function SettingsPage() {
               </CardContent>
             </Card>
           ) : null}
-          <Card className="border-white/10 bg-white/[0.04] shadow-none">
+          <Card className="border-tint/10 bg-surface shadow-none">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <Pill aria-hidden="true" className="h-5 w-5 text-emerald-300" />
+              <CardTitle className="flex items-center gap-2 text-fg-strong">
+                <Pill aria-hidden="true" className="h-5 w-5 text-brand" />
                 Clinical Pharmacists
               </CardTitle>
               <CardDescription>
@@ -73,6 +74,7 @@ export default async function SettingsPage() {
               </Link>
             </CardContent>
           </Card>
+          <AppearanceCard />
           <SettingsForms />
         </section>
       </main>
