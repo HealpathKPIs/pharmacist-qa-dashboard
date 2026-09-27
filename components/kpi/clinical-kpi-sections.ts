@@ -2,6 +2,7 @@ import type { FunctionComponent } from "react";
 
 import type { ClinicalKpiSectionProps } from "@/components/kpi/clinical-kpi-types";
 import { MedicationReconciliationKpi } from "@/components/kpi/medication-reconciliation/medication-reconciliation-kpi";
+import { QualityDeductionKpi } from "@/components/kpi/quality-deduction/quality-deduction-kpi";
 
 export type ClinicalKpiSection = {
   // Server component that loads its own data and renders the whole section.
@@ -19,5 +20,10 @@ export const CLINICAL_KPI_SECTIONS: readonly ClinicalKpiSection[] = [
     Component: MedicationReconciliationKpi,
     id: "medication-reconciliation",
     title: "Medication Reconciliation — Monthly",
+  },
+  {
+    Component: QualityDeductionKpi,
+    id: "quality-deduction",
+    title: "Quality Deduction Score",
   },
 ];

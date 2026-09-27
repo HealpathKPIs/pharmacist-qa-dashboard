@@ -137,7 +137,7 @@ function Comparison({
   );
 }
 
-function MonthlyMetricCard({
+export function MonthlyMetricCard({
   current,
   differenceFormatter,
   formatter,
