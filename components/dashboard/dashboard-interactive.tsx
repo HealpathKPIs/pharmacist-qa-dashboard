@@ -66,9 +66,13 @@ import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import {
   SEVERITY_LEVEL_SCORES,
   SEVERITY_LEVELS,
-  scoreNonMedicalQaError,
   type SeverityLevel,
 } from "@/lib/non-medical-scoring";
+import {
+  getSeverityPoints,
+  withDerivedSeverity,
+  type ScoredQaErrorDetail,
+} from "@/lib/qa-error-severity";
 import { calculateQualityDeduction } from "@/lib/quality-deduction";
 import { cn } from "@/lib/utils";
 
@@ -89,12 +93,6 @@ const chartTooltipStyle = {
   color: "var(--chart-tooltip-text)",
 };
 
-type DashboardQaErrorRow = QaErrorDetail & {
-  // Non-Medical only: the severity derived from the row's Category and Issue
-  // type (lib/non-medical-scoring.ts); null when no scoring criterion matches.
-  derivedSeverity?: { level: SeverityLevel; score: number } | null;
-};
-
 type DialogState =
   | {
       description: string;
@@ -104,7 +102,7 @@ type DialogState =
     }
   | {
       description: string;
-      errorRows: DashboardQaErrorRow[];
+      errorRows: ScoredQaErrorDetail[];
       title: string;
       type: "errors";
     }
@@ -244,35 +242,11 @@ function truncateLabel(value: string, maxLength = 24) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
-// Non-Medical severity is derived when the data is analyzed; the stored score
-// column (the Need Edit flag) is not a severity.
-function withDerivedSeverity(rows: QaErrorDetail[]): DashboardQaErrorRow[] {
-  return rows.map((row) => {
-    const result = scoreNonMedicalQaError(row);
-
-    return {
-      ...row,
-      derivedSeverity:
-        result.status === "scored"
-          ? { level: result.severityLevel, score: result.score }
-          : null,
-    };
-  });
-}
-
-// Severity points of a QA error row: the derived score on Non-Medical rows,
-// the stored score elsewhere. null: no scoring criterion, so no score.
-function getSeverityPoints(row: DashboardQaErrorRow) {
-  return row.derivedSeverity === undefined
-    ? row.score
-    : (row.derivedSeverity?.score ?? null);
-}
-
-function formatSeverityPoints(row: DashboardQaErrorRow) {
+function formatSeverityPoints(row: ScoredQaErrorDetail) {
   return String(getSeverityPoints(row) ?? "—");
 }
 
-function getTotalSeverityScore(rows: DashboardQaErrorRow[]) {
+function getTotalSeverityScore(rows: ScoredQaErrorDetail[]) {
   // Rows without a scoring criterion add nothing.
   return rows.reduce((sum, row) => sum + (getSeverityPoints(row) ?? 0), 0);
 }
@@ -285,7 +259,7 @@ function getSeverityLevelLabel(level: SeverityLevel) {
 
 // Non-Medical Severity Distribution: QA errors per derived severity level.
 // Rows without a criterion are their own slice, never a score.
-function getDerivedSeverityChartData(rows: DashboardQaErrorRow[]): ChartDatum[] {
+function getDerivedSeverityChartData(rows: ScoredQaErrorDetail[]): ChartDatum[] {
   const counts = new Map<string, number>();
 
   for (const row of rows) {
@@ -342,14 +316,14 @@ function buildPharmacistQualitySummaries({
   totalPatients,
 }: {
   dailyPatientRows: DailyPatientDetail[];
-  qaRows: DashboardQaErrorRow[];
+  qaRows: ScoredQaErrorDetail[];
   totalPatients: number;
 }): PharmacistQualitySummary[] {
   const patientCountsByDay = getPatientCountsByDay(dailyPatientRows);
   const { firstDay, lastDay } = getBoundaryDays(dailyPatientRows);
   const firstDayPatients = firstDay ? patientCountsByDay[firstDay] ?? 0 : 0;
   const lastDayPatients = lastDay ? patientCountsByDay[lastDay] ?? 0 : 0;
-  const rowsByPharmacist = qaRows.reduce<Record<string, DashboardQaErrorRow[]>>(
+  const rowsByPharmacist = qaRows.reduce<Record<string, ScoredQaErrorDetail[]>>(
     (groups, row) => {
       groups[row.pharmacistName] = groups[row.pharmacistName] ?? [];
       groups[row.pharmacistName].push(row);
@@ -973,7 +947,7 @@ export function QaErrorRowsTable({
 }: {
   actorLabel?: string;
   idLabel?: string;
-  rows: DashboardQaErrorRow[];
+  rows: ScoredQaErrorDetail[];
 }) {
   if (rows.length === 0) {
     return <ChartEmptyState label="No QA error records match this selection." />;
@@ -1041,11 +1015,11 @@ export function DashboardInteractive({
   const [selectedBar, setSelectedBar] = useState<SelectedBar>(null);
   // The rows are already filtered by the dashboard filters, so every severity
   // figure below is recalculated from the filtered QA errors.
-  const qaErrorDetails = useMemo<DashboardQaErrorRow[]>(
+  const qaErrorDetails = useMemo<ScoredQaErrorDetail[]>(
     () => (derivesSeverity ? withDerivedSeverity(storedQaErrorDetails) : storedQaErrorDetails),
     [derivesSeverity, storedQaErrorDetails],
   );
-  const previousQaErrorDetails = useMemo<DashboardQaErrorRow[]>(
+  const previousQaErrorDetails = useMemo<ScoredQaErrorDetail[]>(
     () =>
       derivesSeverity
         ? withDerivedSeverity(storedPreviousQaErrorDetails)
@@ -1125,7 +1099,7 @@ export function DashboardInteractive({
     [derivesSeverity, qaErrorDetails, severityDistribution],
   );
 
-  function openErrorsDialog(title: string, description: string, rows: DashboardQaErrorRow[]) {
+  function openErrorsDialog(title: string, description: string, rows: ScoredQaErrorDetail[]) {
     setDialogState({
       description,
       errorRows: rows,

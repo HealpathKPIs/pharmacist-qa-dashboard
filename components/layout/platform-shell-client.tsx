@@ -20,6 +20,7 @@ import {
   AUDIT_MODULES,
   CLINICAL_KPI_PATH,
   getAuditPath,
+  NON_MEDICAL_KPI_PATH,
   type AuditType,
 } from "@/lib/audit-types";
 import {
@@ -38,6 +39,12 @@ type NavigationItem = {
   label: string;
   // Shown indented under the module it belongs to.
   nested?: boolean;
+};
+
+// KPI pages, listed under their module.
+const MODULE_KPI_LINKS: Partial<Record<AuditType, { href: string; label: string }>> = {
+  clinical: { href: CLINICAL_KPI_PATH, label: "Clinical KPIs" },
+  non_medical: { href: NON_MEDICAL_KPI_PATH, label: "Non-Medical KPIs" },
 };
 
 function isActivePath(pathname: string, href: string) {
@@ -89,17 +96,19 @@ export function PlatformShellClient({
   const visibleModules = getEffectiveModules(profile).map(
     (auditType) => AUDIT_MODULES[auditType],
   );
-  const moduleItems: NavigationItem[] = visibleModules.flatMap((module) => [
-    {
-      href: getAuditPath(module.auditType),
-      icon: profile.role === "admin" ? ShieldCheck : LayoutDashboard,
-      label: module.moduleLabel,
-    },
-    // Only users who can open Clinical QA see its KPI page.
-    ...(module.auditType === "clinical"
-      ? [{ href: CLINICAL_KPI_PATH, icon: Target, label: "Clinical KPIs", nested: true }]
-      : []),
-  ]);
+  const moduleItems: NavigationItem[] = visibleModules.flatMap((module) => {
+    const kpiLink = MODULE_KPI_LINKS[module.auditType];
+
+    return [
+      {
+        href: getAuditPath(module.auditType),
+        icon: profile.role === "admin" ? ShieldCheck : LayoutDashboard,
+        label: module.moduleLabel,
+      },
+      // Only users who can open a module see its KPI page.
+      ...(kpiLink ? [{ ...kpiLink, icon: Target, nested: true }] : []),
+    ];
+  });
   const primaryItems: NavigationItem[] =
     profile.role === "admin"
       ? [

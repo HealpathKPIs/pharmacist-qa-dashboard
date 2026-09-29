@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getAuditModule } from "@/lib/audit-types";
+import { toQualityDeductionRows } from "@/lib/qa-error-severity";
 import {
   summarizeQualityDeduction,
   type QualityDeductionFigures,
@@ -32,6 +34,26 @@ import type {
 } from "@/lib/quality-deduction-queries";
 import { formatMonthLabel, getMonthKey, type MonthKey } from "@/lib/reconciliation";
 import { cn } from "@/lib/utils";
+
+export type QualityDeductionModule = "clinical" | "non_medical";
+
+// Wording that differs per module; labels come from lib/audit-types.ts.
+const MODULE_SCOPE: Record<
+  QualityDeductionModule,
+  { allActors: string; idLabel: string; scopeNote: string }
+> = {
+  clinical: {
+    allActors: "All active Clinical pharmacists",
+    idLabel: "Patient ID",
+    scopeNote: "Only active Clinical pharmacists are included.",
+  },
+  non_medical: {
+    allActors: "All Non-Medical agents",
+    idLabel: "Case ID",
+    scopeNote:
+      "Severity points come from the Non-Medical scoring criteria (Category + Issue type).",
+  },
+};
 
 // One table cell: a pharmacist (null = team total) in a month (null = the
 // whole selected period).
@@ -103,18 +125,24 @@ function describeCell(cell: NonNullable<SelectedCell>) {
   }`;
 }
 
+function formatUnscoredNote(count: number) {
+  return `${formatInteger(count)} QA ${count === 1 ? "error has" : "errors have"} no scoring criterion: counted as QA errors, with no points.`;
+}
+
 function SectionHeader({
   caption,
+  moduleLabel,
   previousLabel,
 }: {
   caption?: string;
+  moduleLabel: string;
   previousLabel?: string | null;
 }) {
   return (
     <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p className="text-xs font-semibold uppercase tracking-normal text-brand">
-          Clinical QA
+          {moduleLabel}
         </p>
         <h2 className="mt-1 text-xl font-semibold tracking-normal text-fg-strong">
           Quality Deduction Score
@@ -178,7 +206,17 @@ function Operator({ label, symbol }: { label: string; symbol: string }) {
   );
 }
 
-function HowItIsCalculated({ figures }: { figures: QualityDeductionFigures }) {
+function HowItIsCalculated({
+  actorsLower,
+  figures,
+  scopeNote,
+  unscoredErrors,
+}: {
+  actorsLower: string;
+  figures: QualityDeductionFigures;
+  scopeNote: string;
+  unscoredErrors: number;
+}) {
   return (
     <div className="rounded-lg border border-tint/10 bg-inset p-4">
       <p className="flex items-center gap-2 text-sm font-medium text-fg-strong">
@@ -205,8 +243,9 @@ function HowItIsCalculated({ figures }: { figures: QualityDeductionFigures }) {
         <ul className="list-disc space-y-1 pl-4 text-xs leading-5 text-fg-muted">
           <li>Total Severity Score adds up the score of every QA error record.</li>
           <li>Each QA error record counts once; individual scores are not averaged.</li>
-          <li>Team totals add all pharmacists&apos; points and errors, then divide once.</li>
-          <li>Only active Clinical pharmacists are included.</li>
+          <li>Team totals add all {actorsLower}&apos; points and errors, then divide once.</li>
+          <li>{scopeNote}</li>
+          {unscoredErrors > 0 ? <li>{formatUnscoredNote(unscoredErrors)}</li> : null}
         </ul>
       </div>
     </div>
@@ -214,11 +253,17 @@ function HowItIsCalculated({ figures }: { figures: QualityDeductionFigures }) {
 }
 
 function CalculationCard({
+  actorsLower,
   figures,
   periodLabel,
+  scopeNote,
+  unscoredErrors,
 }: {
+  actorsLower: string;
   figures: QualityDeductionFigures;
   periodLabel: string;
+  scopeNote: string;
+  unscoredErrors: number;
 }) {
   return (
     <Card className="animate-soft-in border-tint/10 bg-transparent bg-gradient-to-br from-surface-from to-surface-to shadow-(--shadow-card-lg)">
@@ -256,7 +301,12 @@ function CalculationCard({
             />
           </div>
         </div>
-        <HowItIsCalculated figures={figures} />
+        <HowItIsCalculated
+          actorsLower={actorsLower}
+          figures={figures}
+          scopeNote={scopeNote}
+          unscoredErrors={unscoredErrors}
+        />
       </CardContent>
     </Card>
   );
@@ -300,12 +350,16 @@ function FiguresCell({
 }
 
 function MonthlyTable({
+  actorLabel,
   data,
   onSelect,
 }: {
+  actorLabel: string;
   data: QualityDeductionData;
   onSelect: (cell: NonNullable<SelectedCell>) => void;
 }) {
+  const actorLower = actorLabel.toLowerCase();
+
   return (
     <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
       <CardContent className="p-0">
@@ -313,7 +367,7 @@ function MonthlyTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-44">Pharmacist</TableHead>
+                <TableHead className="min-w-44">{actorLabel}</TableHead>
                 {data.months.map((month) => (
                   <TableHead className="min-w-36" key={month.month}>
                     {formatMonthLabel(month.month, "short")}
@@ -379,8 +433,8 @@ function MonthlyTable({
         </div>
         <p className="border-t border-tint/10 px-4 py-3 text-xs text-fg-subtle">
           Each cell shows the Quality Deduction Score, then total severity score / QA errors.
-          The team total adds every pharmacist&apos;s severity points and QA errors, then
-          divides once; it is not an average of pharmacist scores. Click a cell to see its QA
+          The team total adds every {actorLower}&apos;s severity points and QA errors, then
+          divides once; it is not an average of {actorLower} scores. Click a cell to see its QA
           error rows.
         </p>
       </CardContent>
@@ -388,13 +442,22 @@ function MonthlyTable({
   );
 }
 
-export function QualityDeductionScore({ result }: { result: QualityDeductionResult }) {
+export function QualityDeductionScore({
+  auditType,
+  result,
+}: {
+  auditType: QualityDeductionModule;
+  result: QualityDeductionResult;
+}) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
+  const moduleConfig = getAuditModule(auditType);
+  const scope = MODULE_SCOPE[auditType];
+  const actorLower = moduleConfig.actorLabel.toLowerCase();
 
   if (result.error !== null) {
     return (
       <section className="space-y-4">
-        <SectionHeader />
+        <SectionHeader moduleLabel={moduleConfig.moduleLabel} />
         <Alert variant="destructive">
           <AlertCircle aria-hidden="true" className="h-4 w-4" />
           <AlertDescription>
@@ -418,15 +481,22 @@ export function QualityDeductionScore({ result }: { result: QualityDeductionResu
           (selectedCell.month === null || getMonthKey(row.day) === selectedCell.month),
       )
     : [];
-  const selectedFigures = summarizeQualityDeduction(selectedRows);
+  const selectedFigures = summarizeQualityDeduction(toQualityDeductionRows(selectedRows));
 
   return (
     <section className="space-y-5">
       <SectionHeader
-        caption={`${periodLabel} · ${data.pharmacistName ?? "All active Clinical pharmacists"}`}
+        caption={`${periodLabel} · ${data.pharmacistName ?? scope.allActors}`}
+        moduleLabel={moduleConfig.moduleLabel}
         previousLabel={previousLabel}
       />
-      <CalculationCard figures={data.current} periodLabel={periodLabel} />
+      <CalculationCard
+        actorsLower={moduleConfig.actorLabelPlural.toLowerCase()}
+        figures={data.current}
+        periodLabel={periodLabel}
+        scopeNote={scope.scopeNote}
+        unscoredErrors={data.unscoredErrors}
+      />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <MonthlyMetricCard
           current={data.current.severity}
@@ -467,14 +537,18 @@ export function QualityDeductionScore({ result }: { result: QualityDeductionResu
         <div className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-tint/10 bg-inset px-6 text-center">
           <Gauge aria-hidden="true" className="h-7 w-7 text-fg-subtle" />
           <p className="mt-3 text-sm font-medium text-fg-strong">
-            No Clinical QA errors match these filters.
+            No {moduleConfig.moduleLabel} errors match these filters.
           </p>
           <p className="mt-1 text-sm text-fg-subtle">
-            Change the dates or the pharmacist to see the monthly breakdown.
+            Change the dates or the {actorLower} to see the monthly breakdown.
           </p>
         </div>
       ) : (
-        <MonthlyTable data={data} onSelect={setSelectedCell} />
+        <MonthlyTable
+          actorLabel={moduleConfig.actorLabel}
+          data={data}
+          onSelect={setSelectedCell}
+        />
       )}
       <Dialog
         onOpenChange={(open) => !open && setSelectedCell(null)}
@@ -491,7 +565,11 @@ export function QualityDeductionScore({ result }: { result: QualityDeductionResu
                   {formatScore(selectedFigures)} per error.
                 </DialogDescription>
               </DialogHeader>
-              <QaErrorRowsTable rows={selectedRows} />
+              <QaErrorRowsTable
+                actorLabel={moduleConfig.actorLabel}
+                idLabel={scope.idLabel}
+                rows={selectedRows}
+              />
             </>
           ) : null}
         </DialogContent>

@@ -3,6 +3,7 @@ import {
   AUDIT_TYPES,
   CLINICAL_KPI_PATH,
   getAuditPath,
+  NON_MEDICAL_KPI_PATH,
   type AuditType,
 } from "@/lib/audit-types";
 
@@ -72,6 +73,7 @@ export function canAccessModule(
 // Read-only pages a module's Managers may open besides the module dashboard.
 const MODULE_VIEW_PATHS: Partial<Record<AuditType, readonly string[]>> = {
   clinical: [CLINICAL_KPI_PATH],
+  non_medical: [NON_MEDICAL_KPI_PATH],
 };
 
 export function getModuleViewPaths(auditType: AuditType) {

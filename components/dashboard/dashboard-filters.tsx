@@ -27,7 +27,7 @@ export function DashboardFilters({
   filters: DashboardFilterValues;
   issueOptions: string[];
   pharmacistOptions: string[];
-  // The Clinical KPI page hides it: no KPI there is filtered by issue.
+  // The KPI pages hide it: no KPI there is filtered by issue.
   showIssueFilter?: boolean;
 }) {
   const moduleConfig = getAuditModule(auditType);
