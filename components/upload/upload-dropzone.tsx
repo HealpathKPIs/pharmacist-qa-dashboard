@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import { NonMedicalScoringReport } from "@/components/upload/non-medical-scoring-report";
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import type { SheetRow, WorkbookValidationResult } from "@/lib/excel-validation";
 import {
@@ -619,6 +620,9 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
             <CleanDatasetSummary auditType={auditType} result={validationResult} />
             {uploadResult ? <UploadResultSummary result={uploadResult} /> : null}
             <InvalidRowsTable result={validationResult} />
+            {auditType === "non_medical" ? (
+              <NonMedicalScoringReport result={validationResult} />
+            ) : null}
             <div className={cn("grid gap-4", auditType === "clinical" && "lg:grid-cols-2")}>
               <PreviewTable rows={validationResult.sheet1Rows} sheetName="Sheet1" />
               {auditType === "clinical" ? (

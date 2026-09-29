@@ -104,7 +104,9 @@ export async function AuditDashboardPage({
       getDailyPatientDetails(dateOnlyFilters),
       getQaErrorDetails(queryFilters),
       getQaErrorDetails(previousPeriodFilters),
-      getSeverityDistribution(queryFilters),
+      // Non-Medical severity is derived from the QA error rows
+      // (lib/non-medical-scoring.ts), not read from the stored score column.
+      auditType === "non_medical" ? [] : getSeverityDistribution(queryFilters),
       getErrorsByPharmacist(dateOnlyFilters),
       getErrorsByIssue(dateOnlyFilters),
       getUploadHistory(

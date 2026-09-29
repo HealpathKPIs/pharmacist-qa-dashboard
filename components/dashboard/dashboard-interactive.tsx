@@ -63,6 +63,13 @@ import type {
   SeverityDistributionPoint,
 } from "@/lib/dashboard-queries";
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
+import {
+  SEVERITY_LEVEL_SCORES,
+  SEVERITY_LEVELS,
+  scoreNonMedicalQaError,
+  type SeverityLevel,
+} from "@/lib/non-medical-scoring";
+import { calculateQualityDeduction } from "@/lib/quality-deduction";
 import { cn } from "@/lib/utils";
 
 // Chart colours are theme tokens (app/globals.css), so charts follow Light/Dark.
@@ -82,6 +89,12 @@ const chartTooltipStyle = {
   color: "var(--chart-tooltip-text)",
 };
 
+type DashboardQaErrorRow = QaErrorDetail & {
+  // Non-Medical only: the severity derived from the row's Category and Issue
+  // type (lib/non-medical-scoring.ts); null when no scoring criterion matches.
+  derivedSeverity?: { level: SeverityLevel; score: number } | null;
+};
+
 type DialogState =
   | {
       description: string;
@@ -91,7 +104,7 @@ type DialogState =
     }
   | {
       description: string;
-      errorRows: QaErrorDetail[];
+      errorRows: DashboardQaErrorRow[];
       title: string;
       type: "errors";
     }
@@ -231,8 +244,61 @@ function truncateLabel(value: string, maxLength = 24) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
-function getTotalSeverityScore(rows: QaErrorDetail[]) {
-  return rows.reduce((sum, row) => sum + row.score, 0);
+// Non-Medical severity is derived when the data is analyzed; the stored score
+// column (the Need Edit flag) is not a severity.
+function withDerivedSeverity(rows: QaErrorDetail[]): DashboardQaErrorRow[] {
+  return rows.map((row) => {
+    const result = scoreNonMedicalQaError(row);
+
+    return {
+      ...row,
+      derivedSeverity:
+        result.status === "scored"
+          ? { level: result.severityLevel, score: result.score }
+          : null,
+    };
+  });
+}
+
+// Severity points of a QA error row: the derived score on Non-Medical rows,
+// the stored score elsewhere. null: no scoring criterion, so no score.
+function getSeverityPoints(row: DashboardQaErrorRow) {
+  return row.derivedSeverity === undefined
+    ? row.score
+    : (row.derivedSeverity?.score ?? null);
+}
+
+function formatSeverityPoints(row: DashboardQaErrorRow) {
+  return String(getSeverityPoints(row) ?? "—");
+}
+
+function getTotalSeverityScore(rows: DashboardQaErrorRow[]) {
+  // Rows without a scoring criterion add nothing.
+  return rows.reduce((sum, row) => sum + (getSeverityPoints(row) ?? 0), 0);
+}
+
+const NO_CRITERION_LABEL = "No criterion";
+
+function getSeverityLevelLabel(level: SeverityLevel) {
+  return `${level} (${SEVERITY_LEVEL_SCORES[level]})`;
+}
+
+// Non-Medical Severity Distribution: QA errors per derived severity level.
+// Rows without a criterion are their own slice, never a score.
+function getDerivedSeverityChartData(rows: DashboardQaErrorRow[]): ChartDatum[] {
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    const label = row.derivedSeverity
+      ? getSeverityLevelLabel(row.derivedSeverity.level)
+      : NO_CRITERION_LABEL;
+
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+
+  return [...SEVERITY_LEVELS.map(getSeverityLevelLabel), NO_CRITERION_LABEL]
+    .filter((label) => counts.has(label))
+    .map((label) => ({ name: label, value: counts.get(label) ?? 0 }));
 }
 
 function getSeverityScoreRate(totalSeverityScore: number, totalPatients: number) {
@@ -276,14 +342,14 @@ function buildPharmacistQualitySummaries({
   totalPatients,
 }: {
   dailyPatientRows: DailyPatientDetail[];
-  qaRows: QaErrorDetail[];
+  qaRows: DashboardQaErrorRow[];
   totalPatients: number;
 }): PharmacistQualitySummary[] {
   const patientCountsByDay = getPatientCountsByDay(dailyPatientRows);
   const { firstDay, lastDay } = getBoundaryDays(dailyPatientRows);
   const firstDayPatients = firstDay ? patientCountsByDay[firstDay] ?? 0 : 0;
   const lastDayPatients = lastDay ? patientCountsByDay[lastDay] ?? 0 : 0;
-  const rowsByPharmacist = qaRows.reduce<Record<string, QaErrorDetail[]>>(
+  const rowsByPharmacist = qaRows.reduce<Record<string, DashboardQaErrorRow[]>>(
     (groups, row) => {
       groups[row.pharmacistName] = groups[row.pharmacistName] ?? [];
       groups[row.pharmacistName].push(row);
@@ -450,20 +516,34 @@ function TrendIndicator({
   previous,
   valueFormatter = formatInteger,
 }: {
-  current: number;
+  // null: the metric has no value ("—"), so there is no difference either.
+  current: number | null;
   differenceFormatter?: (value: number) => string;
-  previous: number;
+  previous: number | null;
   valueFormatter?: (value: number) => string;
 }) {
-  const difference = current - previous;
-  const percentDifference = calculatePercentDifference(current, previous);
-  const direction = difference > 0 ? "up" : difference < 0 ? "down" : "flat";
+  const comparison =
+    current === null || previous === null
+      ? null
+      : {
+          difference: current - previous,
+          percentDifference: calculatePercentDifference(current, previous),
+        };
+  const direction = !comparison
+    ? null
+    : comparison.difference > 0
+      ? "up"
+      : comparison.difference < 0
+        ? "down"
+        : "flat";
 
   return (
     <div className="space-y-2 text-xs">
       <div className="flex items-center justify-between gap-3 text-fg-subtle">
         <span>Previous</span>
-        <span className="font-mono text-fg-tertiary">{valueFormatter(previous)}</span>
+        <span className="font-mono text-fg-tertiary">
+          {previous === null ? "—" : valueFormatter(previous)}
+        </span>
       </div>
       <div className="flex items-center justify-between gap-3">
         <span className="text-fg-subtle">Difference</span>
@@ -473,7 +553,8 @@ function TrendIndicator({
             direction === "up" &&
               "border-brand/25 bg-brand/10 text-brand-strong",
             direction === "down" && "border-danger/25 bg-danger/10 text-danger-strong",
-            direction === "flat" && "border-tint/10 bg-tint/[0.04] text-fg-muted",
+            (direction === "flat" || direction === null) &&
+              "border-tint/10 bg-tint/[0.04] text-fg-muted",
           )}
         >
           {direction === "up" ? <ArrowUp aria-hidden="true" className="h-3 w-3" /> : null}
@@ -481,8 +562,16 @@ function TrendIndicator({
             <ArrowDown aria-hidden="true" className="h-3 w-3" />
           ) : null}
           {direction === "flat" ? <Minus aria-hidden="true" className="h-3 w-3" /> : null}
-          {differenceFormatter(difference)}
-          <span className="dark:text-current/70">({formatSignedPercent(percentDifference)})</span>
+          {comparison ? (
+            <>
+              {differenceFormatter(comparison.difference)}
+              <span className="dark:text-current/70">
+                ({formatSignedPercent(comparison.percentDifference)})
+              </span>
+            </>
+          ) : (
+            "—"
+          )}
         </span>
       </div>
     </div>
@@ -568,10 +657,11 @@ function ExecutiveMetricCard({
   detail: string;
   icon: typeof Users;
   label: string;
-  previous: number;
+  previous: number | null;
   trendDifferenceFormatter?: (value: number) => string;
   trendValueFormatter?: (value: number) => string;
-  value: number;
+  // null is shown as "—" (for example QA Deduction without QA errors).
+  value: number | null;
 }) {
   const formatter = trendValueFormatter ?? ((metric: number) => formatInteger(Math.round(metric)));
 
@@ -584,7 +674,7 @@ function ExecutiveMetricCard({
               {label}
             </p>
             <p className="mt-4 truncate font-mono text-3xl font-semibold leading-none text-fg-strong">
-              <AnimatedMetric formatter={formatter} value={value} />
+              {value === null ? "—" : <AnimatedMetric formatter={formatter} value={value} />}
             </p>
           </div>
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand/10 text-brand">
@@ -883,7 +973,7 @@ export function QaErrorRowsTable({
 }: {
   actorLabel?: string;
   idLabel?: string;
-  rows: QaErrorDetail[];
+  rows: DashboardQaErrorRow[];
 }) {
   if (rows.length === 0) {
     return <ChartEmptyState label="No QA error records match this selection." />;
@@ -913,8 +1003,11 @@ export function QaErrorRowsTable({
               </TableCell>
               <TableCell className="font-mono text-fg-muted">{row.patientId}</TableCell>
               <TableCell className="min-w-64 text-fg-tertiary">{row.issueType}</TableCell>
-              <TableCell className="text-right font-mono text-fg-muted">
-                {row.score}
+              <TableCell
+                className="text-right font-mono text-fg-muted"
+                title={row.derivedSeverity === null ? "No scoring criterion" : row.derivedSeverity?.level}
+              >
+                {formatSeverityPoints(row)}
               </TableCell>
               <TableCell className="min-w-80 text-fg-muted">
                 {row.issueDetails ?? "-"}
@@ -934,17 +1027,35 @@ export function DashboardInteractive({
   databaseHealthy,
   errorsByIssue,
   errorsByPharmacist,
-  previousQaErrorDetails,
+  previousQaErrorDetails: storedPreviousQaErrorDetails,
   previousTotals,
-  qaErrorDetails,
+  qaErrorDetails: storedQaErrorDetails,
   recentUpload,
   severityDistribution,
   totals,
 }: DashboardInteractiveProps) {
   const moduleConfig = getAuditModule(auditType);
   const dailyTrendShowsErrorCount = auditType !== "clinical";
+  const derivesSeverity = auditType === "non_medical";
   const [dialogState, setDialogState] = useState<DialogState>(null);
   const [selectedBar, setSelectedBar] = useState<SelectedBar>(null);
+  // The rows are already filtered by the dashboard filters, so every severity
+  // figure below is recalculated from the filtered QA errors.
+  const qaErrorDetails = useMemo<DashboardQaErrorRow[]>(
+    () => (derivesSeverity ? withDerivedSeverity(storedQaErrorDetails) : storedQaErrorDetails),
+    [derivesSeverity, storedQaErrorDetails],
+  );
+  const previousQaErrorDetails = useMemo<DashboardQaErrorRow[]>(
+    () =>
+      derivesSeverity
+        ? withDerivedSeverity(storedPreviousQaErrorDetails)
+        : storedPreviousQaErrorDetails,
+    [derivesSeverity, storedPreviousQaErrorDetails],
+  );
+  const unscoredQaErrors = useMemo(
+    () => qaErrorDetails.filter((row) => row.derivedSeverity === null).length,
+    [qaErrorDetails],
+  );
   const totalSeverityScore = useMemo(() => getTotalSeverityScore(qaErrorDetails), [qaErrorDetails]);
   const previousTotalSeverityScore = useMemo(
     () => getTotalSeverityScore(previousQaErrorDetails),
@@ -960,6 +1071,16 @@ export function DashboardInteractive({
     previousTotalSeverityScore,
     previousTotals.totalQaErrors,
   );
+  // Non-Medical: SUM(score) ÷ COUNT(QA errors), "—" when there are no QA errors.
+  const executiveQaDeduction = derivesSeverity
+    ? {
+        current: calculateQualityDeduction(totalSeverityScore, totals.totalQaErrors).score,
+        previous: calculateQualityDeduction(
+          previousTotalSeverityScore,
+          previousTotals.totalQaErrors,
+        ).score,
+      }
+    : { current: qaDeduction, previous: previousQaDeduction };
   const pharmacistQualitySummaries = useMemo(
     () =>
       buildPharmacistQualitySummaries({
@@ -995,14 +1116,16 @@ export function DashboardInteractive({
   );
   const severityChartData = useMemo(
     () =>
-      severityDistribution.map((row) => ({
-        name: `Score ${row.score}`,
-        value: row.errorCount,
-      })),
-    [severityDistribution],
+      derivesSeverity
+        ? getDerivedSeverityChartData(qaErrorDetails)
+        : severityDistribution.map((row) => ({
+            name: `Score ${row.score}`,
+            value: row.errorCount,
+          })),
+    [derivesSeverity, qaErrorDetails, severityDistribution],
   );
 
-  function openErrorsDialog(title: string, description: string, rows: QaErrorDetail[]) {
+  function openErrorsDialog(title: string, description: string, rows: DashboardQaErrorRow[]) {
     setDialogState({
       description,
       errorRows: rows,
@@ -1069,7 +1192,7 @@ export function DashboardInteractive({
         row.pharmacistName,
         row.patientId,
         row.issueType,
-        row.score,
+        getSeverityPoints(row) ?? "",
         row.issueDetails ?? "",
       ]
         .map((value) => `"${String(value).replaceAll('"', '""')}"`)
@@ -1149,22 +1272,28 @@ export function DashboardInteractive({
               <ExecutiveMetricCard
                 detail={`Validated ${moduleConfig.moduleLabel} errors`}
                 icon={CircleGauge}
-                label="QA Errors"
+                label={derivesSeverity ? "Total QA Errors" : "QA Errors"}
                 previous={previousTotals.totalQaErrors}
                 value={totals.totalQaErrors}
               />
             </>
           ) : null}
           <ExecutiveMetricCard
-            detail="Sum of QA severity scores"
+            detail={
+              !derivesSeverity
+                ? "Sum of QA severity scores"
+                : unscoredQaErrors > 0
+                  ? `Sum of derived severity scores; ${formatInteger(unscoredQaErrors)} QA ${unscoredQaErrors === 1 ? "error has" : "errors have"} no scoring criterion`
+                  : "Sum of derived severity scores"
+            }
             icon={Activity}
             label="Total Severity Score"
             previous={previousTotalSeverityScore}
             value={totalSeverityScore}
           />
-          {auditType === "clinical" ? (
+          {auditType === "clinical" || derivesSeverity ? (
             <ExecutiveMetricCard
-              detail="Total severity score per patient"
+              detail={`Total severity score per ${derivesSeverity ? "case reviewed" : "patient"}`}
               icon={Activity}
               label="Severity Score Rate"
               previous={previousSeverityScoreRate}
@@ -1177,10 +1306,10 @@ export function DashboardInteractive({
             detail="Average severity points per QA error"
             icon={ClipboardList}
             label="QA Deduction (pts)"
-            previous={previousQaDeduction}
+            previous={executiveQaDeduction.previous}
             trendDifferenceFormatter={formatSignedPointsValue}
             trendValueFormatter={formatPoints}
-            value={qaDeduction}
+            value={executiveQaDeduction.current}
           />
         </div>
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
@@ -1448,7 +1577,7 @@ export function DashboardInteractive({
                         {row.issueType}
                       </span>
                       <span className="mt-1 block text-xs text-fg-subtle">
-                        {formatDay(row.day)} · {row.pharmacistName} · Score {row.score}
+                        {formatDay(row.day)} · {row.pharmacistName} · Score {formatSeverityPoints(row)}
                       </span>
                     </span>
                   </button>
