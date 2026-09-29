@@ -70,6 +70,29 @@ export function summarizeQualityDeduction(
   );
 }
 
+// Rows of the monthly table: the module's active roster (all of it, or only
+// the selected name), then any other name in the QA rows, so the table always
+// adds up to the totals.
+export function listQualityDeductionActors({
+  activeNames,
+  rows,
+  selectedName,
+}: {
+  activeNames: readonly string[];
+  rows: readonly { pharmacistName: string }[];
+  selectedName?: string;
+}) {
+  const rosterNames = selectedName
+    ? activeNames.filter((name) => name === selectedName)
+    : [...activeNames];
+  const listed = new Set(rosterNames);
+
+  return [
+    ...rosterNames,
+    ...new Set(rows.map((row) => row.pharmacistName).filter((name) => !listed.has(name))),
+  ];
+}
+
 // Every month of the date filter. Without a full date range: every month from
 // the first to the last month that has QA errors.
 export function getQualityDeductionMonths({

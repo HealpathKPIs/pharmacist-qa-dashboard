@@ -270,6 +270,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      non_medical_agents: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          display_name: string;
+          id: number;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          display_name: string;
+          id?: never;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          display_name?: string;
+          id?: never;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      non_medical_agent_aliases: {
+        Row: {
+          agent_id: number;
+          alias: string;
+          alias_key: string;
+          created_at: string;
+          id: number;
+        };
+        Insert: {
+          agent_id: number;
+          alias: string;
+          alias_key?: never;
+          created_at?: string;
+          id?: never;
+        };
+        Update: {
+          agent_id?: number;
+          alias?: string;
+          alias_key?: never;
+          created_at?: string;
+          id?: never;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       clinical_qa_errors_resolved: {
@@ -328,8 +376,58 @@ export type Database = {
         };
         Relationships: [];
       };
+      // Same columns as clinical_qa_errors_resolved; pharmacist_* is the agent.
+      non_medical_qa_errors_resolved: {
+        Row: {
+          audit_type: "clinical" | "non_medical" | "doctors";
+          day: string;
+          id: number;
+          issue_details: string | null;
+          issue_type: string;
+          patient_id: string;
+          pharmacist_active: boolean;
+          pharmacist_id: number;
+          pharmacist_name: string;
+          pharmacist_name_raw: string | null;
+          score: number;
+          source_file: string | null;
+          stored_pharmacist_name: string;
+          uploaded_at: string | null;
+        };
+        Relationships: [];
+      };
+      non_medical_unmatched_names: {
+        Row: {
+          first_day: string;
+          last_day: string;
+          pharmacist_name: string;
+          records: number;
+        };
+        Relationships: [];
+      };
+      non_medical_alias_usage: {
+        Row: {
+          agent_id: number;
+          alias: string;
+          alias_id: number;
+          alias_key: string;
+          created_at: string;
+          first_day: string | null;
+          last_day: string | null;
+          qa_error_records: number;
+        };
+        Relationships: [];
+      };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      qa_non_medical_merge_agents: {
+        Args: {
+          keep_agent_id: number;
+          merge_agent_id: number;
+        };
+        Returns: undefined;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

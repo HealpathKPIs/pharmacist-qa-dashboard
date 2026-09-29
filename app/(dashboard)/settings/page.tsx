@@ -1,4 +1,4 @@
-import { Pill, Users } from "lucide-react";
+import { Headset, Pill, Users } from "lucide-react";
 import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -71,6 +71,26 @@ export default async function SettingsPage() {
                 href="/settings/clinical-pharmacists"
               >
                 Manage Clinical Pharmacists
+              </Link>
+            </CardContent>
+          </Card>
+          <Card className="border-tint/10 bg-surface shadow-none">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-fg-strong">
+                <Headset aria-hidden="true" className="h-5 w-5 text-brand" />
+                Non-Medical Agents
+              </CardTitle>
+              <CardDescription>
+                Add, rename, activate or deactivate Non-Medical agents and manage their
+                spellings. Applies to Non-Medical QA only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                className={cn(buttonVariants(), "inline-flex")}
+                href="/settings/non-medical-agents"
+              >
+                Manage Non-Medical Agents
               </Link>
             </CardContent>
           </Card>

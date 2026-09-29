@@ -48,10 +48,10 @@ const MODULE_SCOPE: Record<
     scopeNote: "Only active Clinical pharmacists are included.",
   },
   non_medical: {
-    allActors: "All Non-Medical agents",
+    allActors: "All active Non-Medical agents",
     idLabel: "Case ID",
     scopeNote:
-      "Severity points come from the Non-Medical scoring criteria (Category + Issue type).",
+      "Only active Non-Medical agents are included. Severity points come from the Non-Medical scoring criteria (Category + Issue type).",
   },
 };
 

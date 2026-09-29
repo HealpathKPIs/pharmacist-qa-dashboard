@@ -7,6 +7,7 @@ import {
   getQaErrorDetails,
   type DashboardDateRangeFilter,
 } from "@/lib/dashboard-queries";
+import { getActiveNonMedicalAgentNames } from "@/lib/non-medical-roster";
 import {
   toQualityDeductionRows,
   withDerivedSeverity,
@@ -15,6 +16,7 @@ import {
 import {
   buildQualityDeductionTable,
   getQualityDeductionMonths,
+  listQualityDeductionActors,
   summarizeQualityDeduction,
   toFilterDay,
   type QualityDeductionFigures,
@@ -25,7 +27,8 @@ import {
 // rows as the module's dashboard (exact dates) and uses the dashboard's
 // previous-period comparison:
 //   * Clinical: active roster pharmacists, stored scores.
-//   * Non-Medical: every agent, scores derived from the scoring criteria.
+//   * Non-Medical: active roster agents, scores derived from the scoring
+//     criteria.
 
 export type QualityDeductionFilters = {
   endDate?: string;
@@ -133,24 +136,15 @@ export async function getQualityDeduction(
     ]);
     const previousPeriod = getPreviousPeriod(previousFilters);
     const previousRows = previousPeriod ? await getQaErrorDetails(previousFilters) : null;
-    const rosterNames = query.pharmacistName
-      ? activePharmacists.filter((name) => name === query.pharmacistName)
-      : activePharmacists;
-    // Every row belongs to an active roster pharmacist; any other name is still
-    // listed so the table always adds up to the totals.
-    const pharmacists = [
-      ...rosterNames,
-      ...new Set(
-        errorRows
-          .map((row) => row.pharmacistName)
-          .filter((name) => !rosterNames.includes(name)),
-      ),
-    ];
 
     return {
       data: buildQualityDeductionData({
         errorRows,
-        pharmacists,
+        pharmacists: listQualityDeductionActors({
+          activeNames: activePharmacists,
+          rows: errorRows,
+          selectedName: query.pharmacistName,
+        }),
         previousPeriod,
         previousRows,
         query,
@@ -162,30 +156,32 @@ export async function getQualityDeduction(
   }
 }
 
-// Non-Medical: the same formula on the derived severity scores. There is no
-// agent roster, so the table lists the agents with QA errors in the period.
+// Non-Medical: the same formula on the derived severity scores. Like Clinical,
+// the table lists the active agents of the roster.
 export async function getNonMedicalQualityDeduction(
   filters: QualityDeductionFilters,
 ): Promise<QualityDeductionResult> {
   try {
     const query = toQuery("non_medical", filters);
-    const [storedRows, previousFilters] = await Promise.all([
+    const [storedRows, previousFilters, activeAgents] = await Promise.all([
       getQaErrorDetails(query.queryFilters),
       getPreviousPeriodFilters(query.queryFilters),
+      getActiveNonMedicalAgentNames(),
     ]);
     const previousPeriod = getPreviousPeriod(previousFilters);
     const previousRows = previousPeriod
       ? withDerivedSeverity(await getQaErrorDetails(previousFilters))
       : null;
     const errorRows = withDerivedSeverity(storedRows);
-    const agents = [...new Set(errorRows.map((row) => row.pharmacistName))].sort(
-      (left, right) => left.localeCompare(right),
-    );
 
     return {
       data: buildQualityDeductionData({
         errorRows,
-        pharmacists: agents,
+        pharmacists: listQualityDeductionActors({
+          activeNames: activeAgents,
+          rows: errorRows,
+          selectedName: query.pharmacistName,
+        }),
         previousPeriod,
         previousRows,
         query,

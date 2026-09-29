@@ -23,6 +23,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import {
+  NonMedicalAgentReport,
+  type NonMedicalAgentRosterState,
+} from "@/components/upload/non-medical-agent-report";
 import { NonMedicalScoringReport } from "@/components/upload/non-medical-scoring-report";
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import type { SheetRow, WorkbookValidationResult } from "@/lib/excel-validation";
@@ -339,7 +343,14 @@ function UploadResultSummary({
   );
 }
 
-export function UploadDropzone({ auditType }: { auditType: AuditType }) {
+export function UploadDropzone({
+  agentRoster,
+  auditType,
+}: {
+  // Non-Medical only: checks the file's agent names against the agent list.
+  agentRoster?: NonMedicalAgentRosterState;
+  auditType: AuditType;
+}) {
   const moduleConfig = getAuditModule(auditType);
   const toast = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -620,6 +631,9 @@ export function UploadDropzone({ auditType }: { auditType: AuditType }) {
             <CleanDatasetSummary auditType={auditType} result={validationResult} />
             {uploadResult ? <UploadResultSummary result={uploadResult} /> : null}
             <InvalidRowsTable result={validationResult} />
+            {auditType === "non_medical" && agentRoster ? (
+              <NonMedicalAgentReport agentRoster={agentRoster} result={validationResult} />
+            ) : null}
             {auditType === "non_medical" ? (
               <NonMedicalScoringReport result={validationResult} />
             ) : null}

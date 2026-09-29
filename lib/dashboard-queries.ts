@@ -184,14 +184,28 @@ async function fetchDailyPatientRows(
   return data ?? [];
 }
 
-// Clinical QA only: rows are read through the Clinical pharmacist roster, so
-// only active roster pharmacists count, under their current display name.
-async function fetchClinicalQaErrorSummaryRows(
+// Modules with a roster read QA errors through the roster's view, so only
+// active roster members count, under their current display name: Clinical
+// pharmacists and Non-Medical agents. Both views have the same columns.
+// Doctors has no roster and reads qa_errors directly.
+type RosterQaErrorView = "clinical_qa_errors_resolved" | "non_medical_qa_errors_resolved";
+
+const ROSTER_QA_ERROR_VIEWS: Partial<Record<AuditType, RosterQaErrorView>> = {
+  clinical: "clinical_qa_errors_resolved",
+  non_medical: "non_medical_qa_errors_resolved",
+};
+
+export function getRosterQaErrorView(auditType: AuditType) {
+  return ROSTER_QA_ERROR_VIEWS[auditType] ?? null;
+}
+
+async function fetchRosterQaErrorSummaryRows(
+  view: RosterQaErrorView,
   filters: DashboardDateRangeFilter,
 ): Promise<QaErrorSummaryRow[]> {
   const supabase = getSupabaseAdminClient();
   let query = supabase
-    .from("clinical_qa_errors_resolved")
+    .from(view)
     .select("day, pharmacist_name, issue_type, score")
     .eq("pharmacist_active", true)
     .order("day", { ascending: true });
@@ -224,8 +238,10 @@ async function fetchClinicalQaErrorSummaryRows(
 async function fetchQaErrorSummaryRows(
   filters: DashboardDateRangeFilter,
 ): Promise<QaErrorSummaryRow[]> {
-  if (filters.auditType === "clinical") {
-    return fetchClinicalQaErrorSummaryRows(filters);
+  const rosterView = getRosterQaErrorView(filters.auditType);
+
+  if (rosterView) {
+    return fetchRosterQaErrorSummaryRows(rosterView, filters);
   }
 
   const supabase = getSupabaseAdminClient();
@@ -495,13 +511,14 @@ export async function getDailyPatientDetails(
   }));
 }
 
-// Clinical QA only: see fetchClinicalQaErrorSummaryRows.
-async function getClinicalQaErrorDetails(
+// Modules with a roster: see fetchRosterQaErrorSummaryRows.
+async function getRosterQaErrorDetails(
+  view: RosterQaErrorView,
   filters: DashboardDateRangeFilter,
 ): Promise<QaErrorDetail[]> {
   const supabase = getSupabaseAdminClient();
   let query = supabase
-    .from("clinical_qa_errors_resolved")
+    .from(view)
     .select(
       [
         "id",
@@ -558,8 +575,10 @@ async function getClinicalQaErrorDetails(
 export async function getQaErrorDetails(
   filters: DashboardDateRangeFilter,
 ): Promise<QaErrorDetail[]> {
-  if (filters.auditType === "clinical") {
-    return getClinicalQaErrorDetails(filters);
+  const rosterView = getRosterQaErrorView(filters.auditType);
+
+  if (rosterView) {
+    return getRosterQaErrorDetails(rosterView, filters);
   }
 
   const supabase = getSupabaseAdminClient();

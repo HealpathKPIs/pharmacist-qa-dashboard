@@ -1,9 +1,25 @@
 import { AppShell } from "@/components/layout/app-shell";
+import type { NonMedicalAgentRosterState } from "@/components/upload/non-medical-agent-report";
 import { UploadDropzone } from "@/components/upload/upload-dropzone";
 import { requireAdmin } from "@/lib/auth-server";
+import { getNonMedicalRosterForMatching } from "@/lib/non-medical-roster";
+
+export const dynamic = "force-dynamic";
+
+async function loadAgentRoster(): Promise<NonMedicalAgentRosterState> {
+  try {
+    return { error: null, roster: await getNonMedicalRosterForMatching() };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Unknown error.",
+      roster: null,
+    };
+  }
+}
 
 export default async function NonMedicalUploadPage() {
   await requireAdmin();
+  const agentRoster = await loadAgentRoster();
 
   return (
     <AppShell auditType="non_medical">
@@ -17,7 +33,7 @@ export default async function NonMedicalUploadPage() {
               Validate and import the official 12-column Non-Medical QA workbook.
             </p>
           </div>
-          <UploadDropzone auditType="non_medical" />
+          <UploadDropzone agentRoster={agentRoster} auditType="non_medical" />
         </section>
       </main>
     </AppShell>
