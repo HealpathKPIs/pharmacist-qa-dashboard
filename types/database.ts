@@ -145,7 +145,7 @@ export type Database = {
           rows_errors_inserted: number | null;
           skipped_rows: number;
           failed_rows: number;
-          upload_kind: "qa_audit" | "reconciliation_workload";
+          upload_kind: "qa_audit" | "reconciliation_workload" | "calls_workload";
           uploaded_at: string | null;
           status: string | null;
         };
@@ -161,7 +161,7 @@ export type Database = {
           rows_errors_inserted?: number | null;
           skipped_rows?: number;
           failed_rows?: number;
-          upload_kind?: "qa_audit" | "reconciliation_workload";
+          upload_kind?: "qa_audit" | "reconciliation_workload" | "calls_workload";
           uploaded_at?: string | null;
           status?: string | null;
         };
@@ -177,7 +177,7 @@ export type Database = {
           rows_errors_inserted?: number | null;
           skipped_rows?: number;
           failed_rows?: number;
-          upload_kind?: "qa_audit" | "reconciliation_workload";
+          upload_kind?: "qa_audit" | "reconciliation_workload" | "calls_workload";
           uploaded_at?: string | null;
           status?: string | null;
         };
@@ -242,7 +242,7 @@ export type Database = {
           task_label: string;
           upload_batch_id: number | null;
           uploaded_at: string;
-          workload_type: "medication_reconciliation";
+          workload_type: "medication_reconciliation" | "clinical_calls";
         };
         Insert: {
           day: string;
@@ -254,7 +254,7 @@ export type Database = {
           task_label?: string;
           upload_batch_id?: number | null;
           uploaded_at?: string;
-          workload_type?: "medication_reconciliation";
+          workload_type?: "medication_reconciliation" | "clinical_calls";
         };
         Update: {
           day?: string;
@@ -266,7 +266,7 @@ export type Database = {
           task_label?: string;
           upload_batch_id?: number | null;
           uploaded_at?: string;
-          workload_type?: "medication_reconciliation";
+          workload_type?: "medication_reconciliation" | "clinical_calls";
         };
         Relationships: [];
       };
@@ -352,7 +352,7 @@ export type Database = {
           task_label: string;
           upload_batch_id: number | null;
           uploaded_at: string;
-          workload_type: "medication_reconciliation";
+          workload_type: "medication_reconciliation" | "clinical_calls";
         };
         Relationships: [];
       };

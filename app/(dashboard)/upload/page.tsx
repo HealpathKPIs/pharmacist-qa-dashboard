@@ -2,6 +2,7 @@ import { AlertCircle } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CallsUploadCard } from "@/components/upload/calls-upload-card";
 import { ReconciliationUploadCard } from "@/components/upload/reconciliation-upload-card";
 import { UploadDropzone } from "@/components/upload/upload-dropzone";
 import { requireAdmin } from "@/lib/auth-server";
@@ -41,14 +42,20 @@ export default async function UploadDataPage() {
           </div>
           <UploadDropzone auditType="clinical" />
           {rosterResult.roster ? (
-            <ReconciliationUploadCard roster={rosterResult.roster} />
+            <>
+              <ReconciliationUploadCard roster={rosterResult.roster} />
+              <CallsUploadCard
+                defaultYear={new Date().getFullYear()}
+                roster={rosterResult.roster}
+              />
+            </>
           ) : (
             <Alert variant="destructive">
               <AlertCircle aria-hidden="true" className="h-4 w-4" />
               <AlertDescription>
-                The medication reconciliation tracker upload is unavailable because the
-                Clinical pharmacist roster could not be loaded. Apply the Clinical roster
-                migration first. {rosterResult.error}
+                The medication reconciliation and calls tracker uploads are unavailable
+                because the Clinical pharmacist roster could not be loaded. Apply the Clinical
+                roster migration first. {rosterResult.error}
               </AlertDescription>
             </Alert>
           )}

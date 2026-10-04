@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 const UPLOAD_KIND_LABELS: Record<UploadKind, string> = {
   qa_audit: "QA workbook",
   reconciliation_workload: "Reconciliation",
+  calls_workload: "Calls tracker",
 };
 
 function formatDateTime(value: string | null) {

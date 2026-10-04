@@ -3,7 +3,7 @@ import "server-only";
 import type { AuditType } from "@/lib/audit-types";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
-export type UploadKind = "qa_audit" | "reconciliation_workload";
+export type UploadKind = "qa_audit" | "reconciliation_workload" | "calls_workload";
 
 export type UploadHistoryItem = {
   id: number;
@@ -46,8 +46,8 @@ const UPLOAD_BATCH_COLUMNS = [
   "status",
 ];
 
-// Reconciliation tracker batches exist for Clinical QA only, so only the
-// Clinical query reads these columns.
+// Tracker batches (medication reconciliation, calls) exist for Clinical QA
+// only, so only the Clinical query reads these columns.
 const CLINICAL_UPLOAD_BATCH_COLUMNS = [
   ...UPLOAD_BATCH_COLUMNS,
   "upload_kind",
