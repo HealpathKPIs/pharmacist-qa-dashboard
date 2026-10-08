@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import {
@@ -9,7 +10,11 @@ import {
   type DashboardFilterValues,
 } from "@/components/dashboard/dashboard-filters";
 import { KpiSectionSkeleton } from "@/components/kpi/kpi-section-skeleton";
-import type { KpiFilters, KpiSection } from "@/components/kpi/kpi-types";
+import type {
+  KpiActorOptionsOverride,
+  KpiFilters,
+  KpiSection,
+} from "@/components/kpi/kpi-types";
 import { getAuditModule, type AuditType } from "@/lib/audit-types";
 import { requireModuleAccess } from "@/lib/auth-server";
 import { getErrorsByPharmacist } from "@/lib/dashboard-queries";
@@ -43,12 +48,18 @@ async function getActorOptions(auditType: AuditType, filters: KpiFilters) {
 export async function KpiPage({
   auditType,
   description,
+  getActorOptionsOverride,
+  pathname,
   searchParams,
   sections,
   title,
 }: {
   auditType: AuditType;
   description: string;
+  // When it returns a list, the pharmacist filter offers only those names and
+  // a selected pharmacist outside it is cleared (redirect to pathname).
+  getActorOptionsOverride?: KpiActorOptionsOverride;
+  pathname?: string;
   searchParams?: Promise<SearchParams>;
   sections: readonly KpiSection[];
   title: string;
@@ -63,10 +74,36 @@ export async function KpiPage({
   };
   const filters: KpiFilters = {
     endDate: filterValues.endDate || undefined,
+    pharmacistCleared: getSearchValue(resolvedSearchParams, "pharmacistCleared") || undefined,
     pharmacistName: filterValues.pharmacistName || undefined,
     startDate: filterValues.startDate || undefined,
+    taskType: getSearchValue(resolvedSearchParams, "taskType") || undefined,
   };
-  const actorOptions = await getActorOptions(auditType, filters);
+  const overrideOptions = getActorOptionsOverride
+    ? await getActorOptionsOverride(filters).catch(() => null)
+    : null;
+
+  if (
+    overrideOptions &&
+    pathname &&
+    filters.pharmacistName &&
+    !overrideOptions.includes(filters.pharmacistName)
+  ) {
+    const nextParams = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(resolvedSearchParams)) {
+      const first = Array.isArray(value) ? value[0] : value;
+
+      if (first && key !== "pharmacistName" && key !== "pharmacistCleared") {
+        nextParams.set(key, first);
+      }
+    }
+
+    nextParams.set("pharmacistCleared", filters.pharmacistName);
+    redirect(`${pathname}?${nextParams}`);
+  }
+
+  const actorOptions = overrideOptions ?? (await getActorOptions(auditType, filters));
 
   return (
     <DashboardShell auditType={auditType}>

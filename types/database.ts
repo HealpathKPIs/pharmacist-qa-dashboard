@@ -145,7 +145,7 @@ export type Database = {
           rows_errors_inserted: number | null;
           skipped_rows: number;
           failed_rows: number;
-          upload_kind: "qa_audit" | "reconciliation_workload" | "calls_workload";
+          upload_kind: "qa_audit" | "reconciliation_workload" | "calls_workload" | "processing_time";
           uploaded_at: string | null;
           status: string | null;
         };
@@ -161,7 +161,7 @@ export type Database = {
           rows_errors_inserted?: number | null;
           skipped_rows?: number;
           failed_rows?: number;
-          upload_kind?: "qa_audit" | "reconciliation_workload" | "calls_workload";
+          upload_kind?: "qa_audit" | "reconciliation_workload" | "calls_workload" | "processing_time";
           uploaded_at?: string | null;
           status?: string | null;
         };
@@ -177,7 +177,7 @@ export type Database = {
           rows_errors_inserted?: number | null;
           skipped_rows?: number;
           failed_rows?: number;
-          upload_kind?: "qa_audit" | "reconciliation_workload" | "calls_workload";
+          upload_kind?: "qa_audit" | "reconciliation_workload" | "calls_workload" | "processing_time";
           uploaded_at?: string | null;
           status?: string | null;
         };
@@ -270,6 +270,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      clinical_processing_tasks: {
+        Row: {
+          actual_minutes: number;
+          day: string;
+          id: number;
+          items_completed: number;
+          pharmacist_id: number;
+          pharmacist_name_raw: string;
+          sla_minutes: number;
+          sla_per_item: number;
+          source_file: string | null;
+          source_row: number | null;
+          task_reference: string;
+          task_type: string;
+          upload_batch_id: number | null;
+          uploaded_at: string;
+        };
+        Insert: {
+          actual_minutes: number;
+          day: string;
+          id?: never;
+          items_completed: number;
+          pharmacist_id: number;
+          pharmacist_name_raw: string;
+          sla_minutes: number;
+          sla_per_item: number;
+          source_file?: string | null;
+          source_row?: number | null;
+          task_reference?: string;
+          task_type: string;
+          upload_batch_id?: number | null;
+          uploaded_at?: string;
+        };
+        Update: {
+          actual_minutes?: number;
+          day?: string;
+          id?: never;
+          items_completed?: number;
+          pharmacist_id?: number;
+          pharmacist_name_raw?: string;
+          sla_minutes?: number;
+          sla_per_item?: number;
+          source_file?: string | null;
+          source_row?: number | null;
+          task_reference?: string;
+          task_type?: string;
+          upload_batch_id?: number | null;
+          uploaded_at?: string;
+        };
+        Relationships: [];
+      };
       non_medical_agents: {
         Row: {
           active: boolean;
@@ -356,6 +407,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      clinical_processing_tasks_resolved: {
+        Row: {
+          actual_minutes: number;
+          day: string;
+          id: number;
+          items_completed: number;
+          pharmacist_active: boolean;
+          pharmacist_id: number;
+          pharmacist_name: string;
+          pharmacist_name_raw: string;
+          sla_minutes: number;
+          sla_per_item: number;
+          source_file: string | null;
+          source_row: number | null;
+          task_reference: string;
+          task_type: string;
+          upload_batch_id: number | null;
+          uploaded_at: string;
+        };
+        Relationships: [];
+      };
       clinical_unmatched_names: {
         Row: {
           first_day: string;
@@ -420,6 +492,14 @@ export type Database = {
       };
     };
     Functions: {
+      qa_replace_processing_month: {
+        Args: {
+          p_batch_id: number;
+          p_month: string;
+          p_rows: Json;
+        };
+        Returns: Array<{ deleted_rows: number; inserted_rows: number }>;
+      };
       qa_non_medical_merge_agents: {
         Args: {
           keep_agent_id: number;

@@ -3,7 +3,11 @@ import "server-only";
 import type { AuditType } from "@/lib/audit-types";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
-export type UploadKind = "qa_audit" | "reconciliation_workload" | "calls_workload";
+export type UploadKind =
+  | "qa_audit"
+  | "reconciliation_workload"
+  | "calls_workload"
+  | "processing_time";
 
 export type UploadHistoryItem = {
   id: number;

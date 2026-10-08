@@ -13,6 +13,7 @@ const UPLOAD_KIND_LABELS: Record<UploadKind, string> = {
   qa_audit: "QA workbook",
   reconciliation_workload: "Reconciliation",
   calls_workload: "Calls tracker",
+  processing_time: "Processing time tracker",
 };
 
 function formatDateTime(value: string | null) {

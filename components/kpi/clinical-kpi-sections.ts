@@ -1,6 +1,7 @@
 import { ClinicalCallsKpi } from "@/components/kpi/clinical-calls/clinical-calls-kpi";
 import type { KpiSection } from "@/components/kpi/kpi-types";
 import { MedicationReconciliationKpi } from "@/components/kpi/medication-reconciliation/medication-reconciliation-kpi";
+import { ProcessingTimeKpi } from "@/components/kpi/processing-time/processing-time-kpi";
 import { QualityDeductionKpi } from "@/components/kpi/quality-deduction/quality-deduction-kpi";
 
 // Sections of the Clinical KPI page, in display order. To add a KPI, create a
@@ -21,5 +22,10 @@ export const CLINICAL_KPI_SECTIONS: readonly KpiSection[] = [
     Component: ClinicalCallsKpi,
     id: "clinical-calls",
     title: "Clinical Calls KPI",
+  },
+  {
+    Component: ProcessingTimeKpi,
+    id: "processing-time",
+    title: "Processing Time KPI",
   },
 ];

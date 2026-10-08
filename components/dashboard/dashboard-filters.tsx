@@ -39,6 +39,9 @@ export function DashboardFilters({
   function updateFilter(key: keyof DashboardFilterValues, value: string) {
     const nextParams = new URLSearchParams(searchParams.toString());
 
+    // Note from the KPI page that a pharmacist was cleared; stale after any change.
+    nextParams.delete("pharmacistCleared");
+
     if (value) {
       nextParams.set(key, value);
     } else {
