@@ -1,7 +1,16 @@
 "use client";
 
-import { AlertCircle, ClipboardList, Gauge, Info, Sigma } from "lucide-react";
-import { useState } from "react";
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ClipboardList,
+  Gauge,
+  Info,
+  Sigma,
+} from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { QaErrorRowsTable } from "@/components/dashboard/dashboard-interactive";
 import { MonthlyMetricCard } from "@/components/kpi/medication-reconciliation/reconciliation-monthly-section";
@@ -61,6 +70,12 @@ type SelectedCell = {
   month: MonthKey | null;
   pharmacist: string | null;
 } | null;
+
+// Table sort: by name, by one month's score, or by the selected-period score.
+type SortKey = "name" | "total" | MonthKey;
+type SortState = { direction: "asc" | "desc"; key: SortKey };
+
+const DEFAULT_SORT: SortState = { direction: "asc", key: "name" };
 
 // Ranges are joined by hand: Intl formatRange spacing differs between Node and
 // browsers, which breaks hydration.
@@ -349,6 +364,76 @@ function FiguresCell({
   );
 }
 
+function getSortFigures(data: QualityDeductionData, key: SortKey, pharmacist: string) {
+  if (key === "total") {
+    return data.total.cells[pharmacist];
+  }
+
+  return data.months.find((month) => month.month === key)?.cells[pharmacist];
+}
+
+// Rows without a score (no QA errors) always go last, in either direction.
+// Ties keep alphabetical order.
+function sortPharmacists(data: QualityDeductionData, sort: SortState) {
+  const byName = (a: string, b: string) => a.localeCompare(b);
+  const sign = sort.direction === "asc" ? 1 : -1;
+
+  if (sort.key === "name") {
+    return [...data.pharmacists].sort((a, b) => sign * byName(a, b));
+  }
+
+  return [...data.pharmacists].sort((a, b) => {
+    const scoreA = getSortFigures(data, sort.key, a)?.score ?? null;
+    const scoreB = getSortFigures(data, sort.key, b)?.score ?? null;
+
+    if (scoreA === null || scoreB === null) {
+      return scoreA === scoreB ? byName(a, b) : scoreA === null ? 1 : -1;
+    }
+
+    return scoreA === scoreB ? byName(a, b) : sign * (scoreA - scoreB);
+  });
+}
+
+function SortableHead({
+  className,
+  label,
+  onSort,
+  sort,
+  sortKey,
+  children,
+}: {
+  className?: string;
+  label: string;
+  onSort: (key: SortKey) => void;
+  sort: SortState;
+  sortKey: SortKey;
+  children: ReactNode;
+}) {
+  const active = sort.key === sortKey;
+  const Icon = !active ? ArrowUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown;
+  const ariaSort = !active ? "none" : sort.direction === "asc" ? "ascending" : "descending";
+
+  return (
+    <TableHead aria-sort={ariaSort} className={className}>
+      <button
+        aria-label={`Sort by ${label}`}
+        className={cn(
+          "-mx-1 inline-flex items-start gap-1.5 rounded px-1 py-0.5 text-left uppercase transition-colors hover:text-fg-strong",
+          active && "text-brand-strong",
+        )}
+        onClick={() => onSort(sortKey)}
+        type="button"
+      >
+        <span>{children}</span>
+        <Icon
+          aria-hidden="true"
+          className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", !active && "opacity-50")}
+        />
+      </button>
+    </TableHead>
+  );
+}
+
 function MonthlyTable({
   actorLabel,
   data,
@@ -359,6 +444,17 @@ function MonthlyTable({
   onSelect: (cell: NonNullable<SelectedCell>) => void;
 }) {
   const actorLower = actorLabel.toLowerCase();
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const pharmacists = useMemo(() => sortPharmacists(data, sort), [data, sort]);
+
+  // Score columns start with the highest score first; the name column A to Z.
+  function handleSort(key: SortKey) {
+    setSort((current) =>
+      current.key === key
+        ? { direction: current.direction === "asc" ? "desc" : "asc", key }
+        : { direction: key === "name" ? "asc" : "desc", key },
+    );
+  }
 
   return (
     <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
@@ -367,22 +463,45 @@ function MonthlyTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-44">{actorLabel}</TableHead>
+                <SortableHead
+                  className="min-w-44"
+                  label={`${actorLabel} name`}
+                  onSort={handleSort}
+                  sort={sort}
+                  sortKey="name"
+                >
+                  {actorLabel}
+                </SortableHead>
                 {data.months.map((month) => (
-                  <TableHead className="min-w-36" key={month.month}>
+                  <SortableHead
+                    className="min-w-36"
+                    key={month.month}
+                    label={`${formatMonthLabel(month.month)} score`}
+                    onSort={handleSort}
+                    sort={sort}
+                    sortKey={month.month}
+                  >
                     {formatMonthLabel(month.month, "short")}
                     {month.coverage ? (
                       <span className="mt-0.5 block font-normal normal-case">
                         {formatCoverage(month.coverage)}
                       </span>
                     ) : null}
-                  </TableHead>
+                  </SortableHead>
                 ))}
-                <TableHead className="min-w-36 border-l border-tint/10">Selected period</TableHead>
+                <SortableHead
+                  className="min-w-36 border-l border-tint/10"
+                  label="selected period score"
+                  onSort={handleSort}
+                  sort={sort}
+                  sortKey="total"
+                >
+                  Selected period
+                </SortableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.pharmacists.map((pharmacist) => (
+              {pharmacists.map((pharmacist) => (
                 <TableRow key={pharmacist}>
                   <TableCell className="whitespace-nowrap font-medium text-fg-secondary">
                     {pharmacist}
@@ -434,8 +553,9 @@ function MonthlyTable({
         <p className="border-t border-tint/10 px-4 py-3 text-xs text-fg-subtle">
           Each cell shows the Quality Deduction Score, then total severity score / QA errors.
           The team total adds every {actorLower}&apos;s severity points and QA errors, then
-          divides once; it is not an average of {actorLower} scores. Click a cell to see its QA
-          error rows.
+          divides once; it is not an average of {actorLower} scores. Click a column header to
+          sort by it (highest score first, click again for lowest; {actorLower}s with no QA
+          errors stay last). Click a cell to see its QA error rows.
         </p>
       </CardContent>
     </Card>
