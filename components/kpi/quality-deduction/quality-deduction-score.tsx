@@ -8,11 +8,13 @@ import {
   ClipboardList,
   Gauge,
   Info,
+  LineChart,
   Sigma,
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { QaErrorRowsTable } from "@/components/dashboard/dashboard-interactive";
+import { QualityDeductionTrendDialog } from "@/components/kpi/quality-deduction/quality-deduction-trend";
 import { MonthlyMetricCard } from "@/components/kpi/medication-reconciliation/reconciliation-monthly-section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
@@ -438,10 +440,12 @@ function MonthlyTable({
   actorLabel,
   data,
   onSelect,
+  onShowTrend,
 }: {
   actorLabel: string;
   data: QualityDeductionData;
   onSelect: (cell: NonNullable<SelectedCell>) => void;
+  onShowTrend: (pharmacist: string) => void;
 }) {
   const actorLower = actorLabel.toLowerCase();
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
@@ -504,7 +508,18 @@ function MonthlyTable({
               {pharmacists.map((pharmacist) => (
                 <TableRow key={pharmacist}>
                   <TableCell className="whitespace-nowrap font-medium text-fg-secondary">
-                    {pharmacist}
+                    <button
+                      aria-label={`Show the monthly trend for ${pharmacist}`}
+                      className="group -mx-1 inline-flex items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:text-brand-strong"
+                      onClick={() => onShowTrend(pharmacist)}
+                      type="button"
+                    >
+                      {pharmacist}
+                      <LineChart
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 text-fg-faint transition-colors group-hover:text-brand"
+                      />
+                    </button>
                   </TableCell>
                   {data.months.map((month) => (
                     <TableCell className="align-top" key={month.month}>
@@ -555,7 +570,8 @@ function MonthlyTable({
           The team total adds every {actorLower}&apos;s severity points and QA errors, then
           divides once; it is not an average of {actorLower} scores. Click a column header to
           sort by it (highest score first, click again for lowest; {actorLower}s with no QA
-          errors stay last). Click a cell to see its QA error rows.
+          errors stay last). Click a name to see that {actorLower}&apos;s monthly trend against
+          the team. Click a cell to see its QA error rows.
         </p>
       </CardContent>
     </Card>
@@ -570,6 +586,7 @@ export function QualityDeductionScore({
   result: QualityDeductionResult;
 }) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
+  const [trendPharmacist, setTrendPharmacist] = useState<string | null>(null);
   const moduleConfig = getAuditModule(auditType);
   const scope = MODULE_SCOPE[auditType];
   const actorLower = moduleConfig.actorLabel.toLowerCase();
@@ -668,8 +685,17 @@ export function QualityDeductionScore({
           actorLabel={moduleConfig.actorLabel}
           data={data}
           onSelect={setSelectedCell}
+          onShowTrend={setTrendPharmacist}
         />
       )}
+      {data.months.length > 0 ? (
+        <QualityDeductionTrendDialog
+          actorLabel={moduleConfig.actorLabel}
+          data={data}
+          onClose={() => setTrendPharmacist(null)}
+          pharmacist={trendPharmacist}
+        />
+      ) : null}
       <Dialog
         onOpenChange={(open) => !open && setSelectedCell(null)}
         open={Boolean(selectedCell)}
