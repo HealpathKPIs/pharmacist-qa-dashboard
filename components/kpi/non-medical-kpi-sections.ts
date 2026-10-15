@@ -1,3 +1,4 @@
+import { NonMedicalErrorCountKpi } from "@/components/kpi/error-count/error-count-kpi";
 import type { KpiSection } from "@/components/kpi/kpi-types";
 import { NonMedicalQualityDeductionKpi } from "@/components/kpi/quality-deduction/quality-deduction-kpi";
 
@@ -9,5 +10,10 @@ export const NON_MEDICAL_KPI_SECTIONS: readonly KpiSection[] = [
     Component: NonMedicalQualityDeductionKpi,
     id: "quality-deduction",
     title: "Quality Deduction Score",
+  },
+  {
+    Component: NonMedicalErrorCountKpi,
+    id: "error-count",
+    title: "QA Error Count",
   },
 ];

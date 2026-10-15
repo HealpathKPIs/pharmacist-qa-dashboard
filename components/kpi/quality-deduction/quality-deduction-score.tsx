@@ -2,18 +2,22 @@
 
 import {
   AlertCircle,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   ClipboardList,
   Gauge,
   Info,
   LineChart,
   Sigma,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 import { QaErrorRowsTable } from "@/components/dashboard/dashboard-interactive";
+import { formatCoverage, formatInteger, formatPeriod } from "@/components/kpi/kpi-format";
+import {
+  getSortCell,
+  SortableHead,
+  sortNames,
+  useKpiSort,
+} from "@/components/kpi/kpi-sort";
 import { QualityDeductionTrendDialog } from "@/components/kpi/quality-deduction/quality-deduction-trend";
 import { MonthlyMetricCard } from "@/components/kpi/medication-reconciliation/reconciliation-monthly-section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -29,7 +33,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -38,6 +41,7 @@ import { toQualityDeductionRows } from "@/lib/qa-error-severity";
 import {
   summarizeQualityDeduction,
   type QualityDeductionFigures,
+  type QualityDeductionTeamTrend,
 } from "@/lib/quality-deduction";
 import type {
   QualityDeductionData,
@@ -73,67 +77,12 @@ type SelectedCell = {
   pharmacist: string | null;
 } | null;
 
-// Table sort: by name, by one month's score, or by the selected-period score.
-type SortKey = "name" | "total" | MonthKey;
-type SortState = { direction: "asc" | "desc"; key: SortKey };
-
-const DEFAULT_SORT: SortState = { direction: "asc", key: "name" };
-
-// Ranges are joined by hand: Intl formatRange spacing differs between Node and
-// browsers, which breaks hydration.
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-  year: "numeric",
-});
-
-const dayFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-
-function toDate(day: string) {
-  return new Date(`${day}T00:00:00.000Z`);
-}
-
-function formatInteger(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
-}
-
 function formatPoints(value: number) {
   return `${value.toFixed(2)} pts`;
 }
 
 function formatScore(figures: QualityDeductionFigures) {
   return figures.score === null ? "—" : formatPoints(figures.score);
-}
-
-function formatPeriod(startDate: string | null, endDate: string | null) {
-  if (startDate && endDate) {
-    const startFormatter =
-      startDate.slice(0, 4) === endDate.slice(0, 4) ? dayFormatter : dateFormatter;
-
-    return `${startFormatter.format(toDate(startDate))} – ${dateFormatter.format(toDate(endDate))}`;
-  }
-
-  if (startDate) {
-    return `From ${dateFormatter.format(toDate(startDate))}`;
-  }
-
-  if (endDate) {
-    return `Up to ${dateFormatter.format(toDate(endDate))}`;
-  }
-
-  return "All dates";
-}
-
-// Days of a month cut by the date filter, e.g. "Aug 15 – 31".
-function formatCoverage({ from, to }: { from: string; to: string }) {
-  const firstDay = dayFormatter.format(toDate(from));
-
-  return from === to ? firstDay : `${firstDay} – ${Number(to.slice(8, 10))}`;
 }
 
 function describeCell(cell: NonNullable<SelectedCell>) {
@@ -366,76 +315,6 @@ function FiguresCell({
   );
 }
 
-function getSortFigures(data: QualityDeductionData, key: SortKey, pharmacist: string) {
-  if (key === "total") {
-    return data.total.cells[pharmacist];
-  }
-
-  return data.months.find((month) => month.month === key)?.cells[pharmacist];
-}
-
-// Rows without a score (no QA errors) always go last, in either direction.
-// Ties keep alphabetical order.
-function sortPharmacists(data: QualityDeductionData, sort: SortState) {
-  const byName = (a: string, b: string) => a.localeCompare(b);
-  const sign = sort.direction === "asc" ? 1 : -1;
-
-  if (sort.key === "name") {
-    return [...data.pharmacists].sort((a, b) => sign * byName(a, b));
-  }
-
-  return [...data.pharmacists].sort((a, b) => {
-    const scoreA = getSortFigures(data, sort.key, a)?.score ?? null;
-    const scoreB = getSortFigures(data, sort.key, b)?.score ?? null;
-
-    if (scoreA === null || scoreB === null) {
-      return scoreA === scoreB ? byName(a, b) : scoreA === null ? 1 : -1;
-    }
-
-    return scoreA === scoreB ? byName(a, b) : sign * (scoreA - scoreB);
-  });
-}
-
-function SortableHead({
-  className,
-  label,
-  onSort,
-  sort,
-  sortKey,
-  children,
-}: {
-  className?: string;
-  label: string;
-  onSort: (key: SortKey) => void;
-  sort: SortState;
-  sortKey: SortKey;
-  children: ReactNode;
-}) {
-  const active = sort.key === sortKey;
-  const Icon = !active ? ArrowUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown;
-  const ariaSort = !active ? "none" : sort.direction === "asc" ? "ascending" : "descending";
-
-  return (
-    <TableHead aria-sort={ariaSort} className={className}>
-      <button
-        aria-label={`Sort by ${label}`}
-        className={cn(
-          "-mx-1 inline-flex items-start gap-1.5 rounded px-1 py-0.5 text-left uppercase transition-colors hover:text-fg-strong",
-          active && "text-brand-strong",
-        )}
-        onClick={() => onSort(sortKey)}
-        type="button"
-      >
-        <span>{children}</span>
-        <Icon
-          aria-hidden="true"
-          className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", !active && "opacity-50")}
-        />
-      </button>
-    </TableHead>
-  );
-}
-
 function MonthlyTable({
   actorLabel,
   data,
@@ -448,17 +327,13 @@ function MonthlyTable({
   onShowTrend: (pharmacist: string) => void;
 }) {
   const actorLower = actorLabel.toLowerCase();
-  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
-  const pharmacists = useMemo(() => sortPharmacists(data, sort), [data, sort]);
-
-  // Score columns start with the highest score first; the name column A to Z.
-  function handleSort(key: SortKey) {
-    setSort((current) =>
-      current.key === key
-        ? { direction: current.direction === "asc" ? "desc" : "asc", key }
-        : { direction: key === "name" ? "asc" : "desc", key },
-    );
-  }
+  const { handleSort, sort } = useKpiSort();
+  // Score columns: rows without a score (no QA errors) always go last.
+  const pharmacists = useMemo(
+    () =>
+      sortNames(data.pharmacists, sort, (key, name) => getSortCell(data, key, name)?.score ?? null),
+    [data, sort],
+  );
 
   return (
     <Card className="animate-soft-in border-tint/10 bg-surface shadow-none">
@@ -581,9 +456,13 @@ function MonthlyTable({
 export function QualityDeductionScore({
   auditType,
   result,
+  teamTrend,
 }: {
   auditType: QualityDeductionModule;
   result: QualityDeductionResult;
+  // Team line of the trend chart, from unfiltered data. Left out: the table's
+  // own team figures are used. null: it could not be loaded.
+  teamTrend?: QualityDeductionTeamTrend | null;
 }) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
   const [trendPharmacist, setTrendPharmacist] = useState<string | null>(null);
@@ -694,6 +573,7 @@ export function QualityDeductionScore({
           data={data}
           onClose={() => setTrendPharmacist(null)}
           pharmacist={trendPharmacist}
+          teamTrend={teamTrend}
         />
       ) : null}
       <Dialog

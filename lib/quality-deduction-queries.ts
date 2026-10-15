@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import type { AuditType } from "@/lib/audit-types";
 import { getActiveClinicalPharmacistNames } from "@/lib/clinical-roster";
 import {
@@ -7,6 +9,7 @@ import {
   getQaErrorDetails,
   type DashboardDateRangeFilter,
 } from "@/lib/dashboard-queries";
+import { summarizeErrorCount, type ErrorCountSummary } from "@/lib/error-count";
 import { getActiveNonMedicalAgentNames } from "@/lib/non-medical-roster";
 import {
   toQualityDeductionRows,
@@ -30,11 +33,13 @@ import {
 //   * Non-Medical: active roster agents, scores derived from the scoring
 //     criteria.
 
-export type QualityDeductionFilters = {
-  endDate?: string;
-  pharmacistName?: string;
-  startDate?: string;
-};
+// Every filter the loaders read. The Non-Medical cache key is built from this
+// list, so a filter added here is always part of the key.
+const QUERY_FILTER_KEYS = ["endDate", "pharmacistName", "startDate"] as const;
+
+export type QualityDeductionFilters = Partial<
+  Record<(typeof QUERY_FILTER_KEYS)[number], string>
+>;
 
 export type QualityDeductionData = QualityDeductionTable & {
   // SUM(score) / COUNT(rows) of the selected period.
@@ -45,6 +50,8 @@ export type QualityDeductionData = QualityDeductionTable & {
   pharmacistName: string | null;
   pharmacists: string[];
   previous: QualityDeductionFigures | null;
+  // QA Error Count of the previous period (Non-Medical KPI page).
+  previousErrorCount: ErrorCountSummary | null;
   previousPeriod: { endDate: string; startDate: string } | null;
   startDate: string | null;
   // QA errors of the selected period without a scoring criterion (Non-Medical).
@@ -108,6 +115,7 @@ function buildQualityDeductionData({
     pharmacistName: pharmacistName ?? null,
     pharmacists,
     previous: previousRows ? summarizeQualityDeduction(toQualityDeductionRows(previousRows)) : null,
+    previousErrorCount: previousRows ? summarizeErrorCount(previousRows) : null,
     previousPeriod,
     startDate: startDate ?? null,
     unscoredErrors: errorRows.filter((row) => row.derivedSeverity === null).length,
@@ -158,7 +166,7 @@ export async function getQualityDeduction(
 
 // Non-Medical: the same formula on the derived severity scores. Like Clinical,
 // the table lists the active agents of the roster.
-export async function getNonMedicalQualityDeduction(
+async function loadNonMedicalQualityDeduction(
   filters: QualityDeductionFilters,
 ): Promise<QualityDeductionResult> {
   try {
@@ -191,4 +199,16 @@ export async function getNonMedicalQualityDeduction(
   } catch (error) {
     return toErrorResult(error);
   }
+}
+
+// The Quality Deduction and QA Error Count sections of the Non-Medical KPI page
+// share one load per request. The key holds every filter the loader reads.
+const getNonMedicalQualityDeductionCached = cache((key: string) =>
+  loadNonMedicalQualityDeduction(JSON.parse(key) as QualityDeductionFilters),
+);
+
+export function getNonMedicalQualityDeduction(filters: QualityDeductionFilters) {
+  return getNonMedicalQualityDeductionCached(
+    JSON.stringify(Object.fromEntries(QUERY_FILTER_KEYS.map((key) => [key, filters[key]]))),
+  );
 }

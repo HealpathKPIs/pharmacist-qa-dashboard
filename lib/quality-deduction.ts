@@ -194,3 +194,20 @@ export function buildQualityDeductionTable({
     },
   };
 }
+
+// Team line of the trend chart: the table's own team figures of each month and
+// of the period (team severity ÷ team QA errors, divided once). Built from the
+// unfiltered table, so selecting one agent never narrows the team.
+export type QualityDeductionTeamTrend = {
+  months: Record<string, number | null>;
+  period: number | null;
+};
+
+export function buildQualityDeductionTeamTrend(
+  table: QualityDeductionTable,
+): QualityDeductionTeamTrend {
+  return {
+    months: Object.fromEntries(table.months.map((month) => [month.month, month.team.score])),
+    period: table.total.team.score,
+  };
+}
