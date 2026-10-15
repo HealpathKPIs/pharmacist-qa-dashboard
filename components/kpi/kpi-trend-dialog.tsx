@@ -28,10 +28,10 @@ import {
 } from "@/components/ui/table";
 import { formatMonthLabel, type MonthKey } from "@/lib/reconciliation";
 
-// One agent's monthly KPI value against a team comparison line, for KPIs
-// where lower is better. The agent line uses the first series colour; the
-// comparison line stays neutral and dashed, so the two never rely on colour
-// alone. Tokens: app/globals.css.
+// One agent's monthly KPI value against a team comparison line. Lower is
+// better unless higherIsBetter is set. The agent line uses the first series
+// colour; the comparison line stays neutral and dashed, so the two never rely
+// on colour alone. Tokens: app/globals.css.
 const AGENT_COLOR = "var(--chart-1)";
 const TEAM_COLOR = "var(--chart-axis)";
 
@@ -60,6 +60,8 @@ export type KpiTrendDialogProps = {
   // Size of a difference, without its sign.
   formatDifference: (value: number) => string;
   formatValue: (value: number) => string;
+  // Best month = highest value instead of lowest.
+  higherIsBetter?: boolean;
   onClose: () => void;
   period: { agent: number | null; team: number | null };
   pharmacist: string | null;
@@ -108,6 +110,7 @@ export function KpiTrendDialog({
   formatAxis,
   formatDifference,
   formatValue,
+  higherIsBetter = false,
   onClose,
   period,
   pharmacist,
@@ -117,7 +120,7 @@ export function KpiTrendDialog({
 }: KpiTrendDialogProps) {
   const format = (value: number | null) => (value === null ? "—" : formatValue(value));
 
-  // Lower is better, so an agent above the comparison line is doing worse.
+  // States the gap only ("above" / "below"); the description says which is better.
   function describeGap(agent: number | null, team: number | null) {
     if (agent === null || team === null) {
       return "—";
@@ -172,14 +175,16 @@ export function KpiTrendDialog({
     label: formatMonthLabel(point.month, "short"),
   }));
   const valued = points.filter((point) => point.agent !== null);
-  const best = valued.reduce<KpiTrendPoint | null>(
-    (lowest, point) => (lowest === null || point.agent! < lowest.agent! ? point : lowest),
+  const lowest = valued.reduce<KpiTrendPoint | null>(
+    (found, point) => (found === null || point.agent! < found.agent! ? point : found),
     null,
   );
-  const worst = valued.reduce<KpiTrendPoint | null>(
-    (highest, point) => (highest === null || point.agent! > highest.agent! ? point : highest),
+  const highest = valued.reduce<KpiTrendPoint | null>(
+    (found, point) => (found === null || point.agent! > found.agent! ? point : found),
     null,
   );
+  const best = higherIsBetter ? highest : lowest;
+  const worst = higherIsBetter ? lowest : highest;
   const monthsAbove = valued.filter(
     (point) => point.team !== null && point.agent! - point.team > 0.005,
   ).length;
