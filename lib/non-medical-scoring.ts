@@ -73,7 +73,9 @@ export const NON_MEDICAL_SCORING_CRITERIA: Readonly<
     ["WhatsApp SLA", "Moderate"],
     ["No reply", "Fatal"],
     ["Incorrect information", "Fatal"],
-    ["Unprofessional Behavior", "Fatal"],
+    // Changed from Fatal to Coaching (3) at the user's request on 2026-10-19,
+    // in all three scoring categories.
+    ["Unprofessional Behavior", "Coaching"],
     ["Missing reporting complaints", "Fatal"],
     ["Deleted messages", "Fatal"],
     ["Opening Chat", "Coaching"],
@@ -83,7 +85,8 @@ export const NON_MEDICAL_SCORING_CRITERIA: Readonly<
     ["Lack of focus", "Coaching"],
     ["Follow Up", "Fatal"],
     ["Agent Ineffective / Unhelpful", "Fatal"],
-    ["Edited Message", "Fatal"],
+    // Changed from Fatal to Coaching (3) at the user's request on 2026-10-19.
+    ["Edited Message", "Coaching"],
     ["Ending chat without asking for any another inquiry", "Coaching"],
     ["Repeated Message", "Coaching"],
     ["Using Emoji", "Coaching"],
@@ -142,7 +145,8 @@ export const NON_MEDICAL_SCORING_CRITERIA: Readonly<
     ["Long Silence", "Coaching"],
     ["Agent Ineffective / Unhelpful", "Fatal"],
     ["Patient Verification", "Fatal"],
-    ["Unprofessional Behavior", "Fatal"],
+    // Changed from Fatal to Coaching (3) on 2026-10-19, as in WhatsApp Chat.
+    ["Unprofessional Behavior", "Coaching"],
     ["Poor connection", "Coaching"],
     ["Privacy/Compliance Breach", "Fatal"],
     ["Scheduling Inconsistency", "Moderate"],
@@ -239,7 +243,8 @@ export const NON_MEDICAL_SCORING_CRITERIA: Readonly<
     ["Wrong / Missing Appionment Type", "Fatal"],
     ["X", "Moderate"],
     ["Lack Of Focus", "Coaching"],
-    ["Unprofessional Behavior", "Fatal"],
+    // Changed from Fatal to Coaching (3) on 2026-10-19, as in WhatsApp Chat.
+    ["Unprofessional Behavior", "Coaching"],
     ["Missing Consultation", "Fatal"],
     ["Wrong Work Instruction", "Moderate"],
     ["Missing Upload Scan", "Moderate"],
