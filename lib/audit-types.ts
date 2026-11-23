@@ -17,7 +17,7 @@ export const AUDIT_MODULES: Record<AuditType, AuditModuleConfig> = {
   clinical: {
     auditType: "clinical",
     basePath: "",
-    dashboardTitle: "Pharmacist QA Dashboard",
+    dashboardTitle: "Healpath QA Dashboard",
     moduleLabel: "Clinical QA",
     actorLabel: "Pharmacist",
     actorLabelPlural: "Pharmacists",

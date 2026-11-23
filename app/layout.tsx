@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pharmacist QA Dashboard",
-  description: "Pharmacist QA Dashboard",
+  title: "Healpath QA Dashboard",
+  description: "Healpath QA Dashboard",
 };
 
 export default async function RootLayout({
